@@ -2,27 +2,18 @@
 # Standing policy: workflow must exist; N/A is an allowed green outcome with documentation.
 #
 # Hardening (Phase 6-fix / Atlas Forge):
-# - cancel-in-progress: false — rapid pushes must NOT cancel an in-flight DAST gate
-#   (cancelled required checks show FAIL/UNSTABLE on the PR even when the job body is fine).
-# - Short timeout; pure doc verification; no external scanners while Status is N/A.
+# - NO concurrency group — required DAST checks were cancelled/queued indefinitely when
+#   cancel-in-progress raced with multi-push PR traffic and runner shortages.
+# - Always run on pull_request to main (required check must not be path-skipped).
+# - Short timeout; pure docs verification only while Status is N/A.
 name: dast
 
 on:
   push:
     branches: [main]
-    paths:
-      - "windows/**"
-      - ".github/workflows/dast.yml"
-      - "docs/security/**"
   pull_request:
     branches: [main]
-    # Always evaluate DAST on PRs targeting main (required check must not be skipped/cancelled).
   workflow_dispatch:
-
-concurrency:
-  # One logical group per PR/ref, but never cancel a run that already started.
-  group: dast-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: false
 
 permissions:
   contents: read
@@ -50,7 +41,7 @@ jobs:
             exit 1
           fi
           echo "DAST posture document present:"
-          sed -n '1,100p' "$DOC"
+          sed -n '1,120p' "$DOC"
 
       - name: Gate result
         run: |
@@ -61,6 +52,5 @@ jobs:
             echo "Dynamic application security testing is deferred until a network surface exists."
             echo "See \`docs/security/DAST.md\`."
             echo ""
-            echo "Workflow policy: cancel-in-progress=false so this required check is not cancelled by superseding pushes."
+            echo "Workflow policy: no concurrency cancel group (Phase 6-fix) so required checks finish SUCCESS."
           } >> "$GITHUB_STEP_SUMMARY"
-# retrigger 2026-08-06T17:27:19.374792Z
