@@ -71,8 +71,9 @@ public sealed class VideoWallpaperView : UserControl, IDisposable
 
     public void Apply(string path, WallpaperFitMode fit)
     {
+        // Caller must pass a path already validated by LocalMediaPath.
         _media.Stretch = FitModeMapper.ToStretch(fit);
-        _media.Source = new Uri(path, UriKind.Absolute);
+        _media.Source = LocalMediaPath.ToFileUri(path);
         _media.Play();
     }
 
@@ -128,7 +129,8 @@ public sealed class GifWallpaperView : UserControl, IDisposable
         Stop();
         _image.Stretch = FitModeMapper.ToStretch(fit);
 
-        var uri = new Uri(path, UriKind.Absolute);
+        // file:// URI from validated local path only.
+        var uri = LocalMediaPath.ToFileUri(path);
         var decoder = new GifBitmapDecoder(uri, BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.OnLoad);
         if (decoder.Frames.Count == 0)
         {
