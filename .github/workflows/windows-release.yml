@@ -1,0 +1,178 @@
+# WRQ-WIN-001 Phase 5 — Windows release packaging (Ship)
+# Produces a reproducible win-x64 zip on workflow_dispatch and on tags win-v*.
+# Draft GitHub Release on tags; optional draft on workflow_dispatch.
+name: windows-release
+
+on:
+  push:
+    tags:
+      - "win-v*"
+  workflow_dispatch:
+    inputs:
+      create_draft_release:
+        description: "Create a draft GitHub Release (workflow_dispatch only; tags always draft-release)"
+        type: boolean
+        default: false
+      version_suffix:
+        description: "Optional version label override (default: csproj version + run number)"
+        type: string
+        required: false
+        default: ""
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    name: Package win-x64 (self-contained)
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      artifact_name: ${{ steps.meta.outputs.artifact_name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Resolve version metadata
+        id: meta
+        shell: pwsh
+        run: |
+          $refName = $env:GITHUB_REF_NAME
+          if ($env:GITHUB_REF -like 'refs/tags/win-v*') {
+            $version = $refName.Substring(5)  # strip win-v
+          } elseif ('${{ inputs.version_suffix }}') {
+            $version = '${{ inputs.version_suffix }}'
+          } else {
+            $version = "0.2.0-alpha+$env:GITHUB_RUN_NUMBER"
+          }
+          $safe = ($version -replace '[\\/:\s]', '-')
+          $artifact = "Waraq.Windows-win-x64-$safe"
+          "version=$version" >> $env:GITHUB_OUTPUT
+          "artifact_name=$artifact" >> $env:GITHUB_OUTPUT
+          Write-Host "version=$version artifact=$artifact"
+
+      - name: Restore + test (Release)
+        working-directory: windows
+        run: |
+          dotnet restore WaraqWindows.sln
+          dotnet test WaraqWindows.sln -c Release --verbosity minimal
+
+      - name: Publish self-contained win-x64
+        working-directory: windows
+        shell: pwsh
+        run: |
+          dotnet publish Waraq.Windows/Waraq.Windows.csproj `
+            -c Release `
+            -r win-x64 `
+            --self-contained true `
+            -p:PublishSingleFile=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true `
+            -p:EnableCompressionInSingleFile=true `
+            -p:DebugType=None `
+            -p:DebugSymbols=false `
+            -p:Version=${{ steps.meta.outputs.version }} `
+            -o ../artifacts/publish
+
+      - name: Stage zip + SHA256
+        shell: pwsh
+        run: |
+          $artifact = '${{ steps.meta.outputs.artifact_name }}'
+          $stage = "artifacts/stage/$artifact"
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item -Path "artifacts/publish/*" -Destination $stage -Recurse -Force
+          Copy-Item LICENSE $stage
+          Copy-Item NOTICE $stage
+          Copy-Item docs/install/WINDOWS.md (Join-Path $stage 'README-INSTALL.md')
+          $zip = "artifacts/$artifact.zip"
+          if (Test-Path $zip) { Remove-Item -Force $zip }
+          Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force
+          $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower()
+          Set-Content -Path artifacts/SHA256SUMS.txt -Value ("{0}  {1}" -f $hash, (Split-Path $zip -Leaf)) -Encoding ascii
+          Get-ChildItem artifacts | Format-Table Name, Length
+          Get-Content artifacts/SHA256SUMS.txt
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.artifact_name }}
+          path: |
+            artifacts/${{ steps.meta.outputs.artifact_name }}.zip
+            artifacts/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Draft GitHub Release (tag)
+        if: startsWith(github.ref, 'refs/tags/win-v')
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: true
+          generate_release_notes: true
+          name: Waraq for Windows ${{ steps.meta.outputs.version }}
+          body: |
+            ## Waraq for Windows — ${{ steps.meta.outputs.version }}
+
+            GPL-3.0 derivative of [bahamut42/waraq](https://github.com/bahamut42/waraq).
+
+            ### Install (quick)
+            1. Download `Waraq.Windows-win-x64-*.zip` and optional `SHA256SUMS.txt`
+            2. Extract to a folder you control
+            3. Run `Waraq.Windows.exe`
+            4. Browse a local video/GIF → **Apply wallpaper**
+
+            Full steps: [docs/install/WINDOWS.md](https://github.com/taroo0ooq/waraq-windows/blob/main/docs/install/WINDOWS.md)
+
+            ### Notes
+            - **Self-contained** win-x64 (no separate .NET runtime install)
+            - **Not code-signed** — SmartScreen may warn (expected for unsigned OSS)
+            - Corresponding source: this repository (GPL-3.0)
+          files: |
+            artifacts/${{ steps.meta.outputs.artifact_name }}.zip
+            artifacts/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Draft GitHub Release (workflow_dispatch optional)
+        if: github.event_name == 'workflow_dispatch' && inputs.create_draft_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: win-v${{ steps.meta.outputs.version }}
+          draft: true
+          prerelease: true
+          generate_release_notes: true
+          name: Waraq for Windows ${{ steps.meta.outputs.version }}
+          body: |
+            ## Waraq for Windows — ${{ steps.meta.outputs.version }}
+
+            Draft created from workflow_dispatch (Pipeline Warden Phase 5).
+
+            Install: [docs/install/WINDOWS.md](https://github.com/taroo0ooq/waraq-windows/blob/main/docs/install/WINDOWS.md)
+          files: |
+            artifacts/${{ steps.meta.outputs.artifact_name }}.zip
+            artifacts/SHA256SUMS.txt
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Job summary
+        shell: pwsh
+        run: |
+          @"
+          ## windows-release
+
+          - version: `${{ steps.meta.outputs.version }}`
+          - artifact: `${{ steps.meta.outputs.artifact_name }}.zip`
+          - run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          - install docs: ``docs/install/WINDOWS.md``
+          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
