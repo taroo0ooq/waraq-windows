@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Waraq.Windows", "Waraq.Windows\Waraq.Windows.csproj", "{1A36C081-97A1-4C7A-B128-A628B91D49DF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Waraq.Windows.Tests", "Waraq.Windows.Tests\Waraq.Windows.Tests.csproj", "{7131257E-C9A8-4381-BB29-8CD3EAA9FB0F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1A36C081-97A1-4C7A-B128-A628B91D49DF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A36C081-97A1-4C7A-B128-A628B91D49DF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A36C081-97A1-4C7A-B128-A628B91D49DF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A36C081-97A1-4C7A-B128-A628B91D49DF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7131257E-C9A8-4381-BB29-8CD3EAA9FB0F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7131257E-C9A8-4381-BB29-8CD3EAA9FB0F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7131257E-C9A8-4381-BB29-8CD3EAA9FB0F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7131257E-C9A8-4381-BB29-8CD3EAA9FB0F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

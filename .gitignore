@@ -73,3 +73,21 @@ AuthKey_*.p8
 *.log
 tmp/
 Waraq.xcodeproj/
+
+# .NET / Windows (windows/)
+**/bin/
+**/obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]rtifacts/
+*.nupkg
+project.lock.json
+packages/
+TestResults/
+*.DotSettings.user

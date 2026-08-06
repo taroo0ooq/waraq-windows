@@ -1,0 +1,80 @@
+# WRQ-WIN-001 Phase 1b — Playwright workflow stub (UI e2e deferred)
+# Stub stays green with explicit skip until Stagecraft QA owns real specs.
+name: playwright
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - "e2e/**"
+      - ".github/workflows/playwright.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - "e2e/**"
+      - ".github/workflows/playwright.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: playwright-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  playwright-stub:
+    name: Playwright stub (no specs yet)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Detect Playwright specs
+        id: detect
+        run: |
+          set -euo pipefail
+          count=0
+          if [ -d e2e ]; then
+            count=$(find e2e -type f \( -name '*.spec.ts' -o -name '*.spec.js' -o -name '*.test.ts' -o -name '*.test.js' \) | wc -l | tr -d ' ')
+          fi
+          echo "spec_count=${count}" >> "$GITHUB_OUTPUT"
+          echo "Found ${count} Playwright spec file(s)"
+
+      - name: Stub skip (Phase 1b)
+        if: steps.detect.outputs.spec_count == '0'
+        run: |
+          echo "## Playwright: STUB / SKIP" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "No \`e2e/**/*.spec.*\` files present." >> "$GITHUB_STEP_SUMMARY"
+          echo "Waraq Windows is a WPF desktop scaffold; browser Playwright coverage is not applicable until a web surface or explicit desktop automation plan is owned by Stagecraft QA." >> "$GITHUB_STEP_SUMMARY"
+          echo "Workflow remains required (hardcoded gate). Job exits 0 as documented stub." >> "$GITHUB_STEP_SUMMARY"
+          mkdir -p e2e
+          if [ ! -f e2e/README.md ]; then
+            cat > e2e/README.md <<'EOF'
+          # e2e (Playwright) — reserved
+
+          Phase 1b stub: no specs yet.
+
+          When UI automation is scheduled (Stagecraft QA via Gatekeeper Nova):
+          - Add Playwright config + specs under `e2e/`
+          - Extend `.github/workflows/playwright.yml` to install browsers and run `npx playwright test`
+          - Prefer testing any future web admin/gallery surfaces; desktop WPF may use a different harness
+
+          See work_id WRQ-WIN-001 stage board.
+          EOF
+          fi
+          echo "Stub complete — green without fake test runs."
+
+      - name: Run Playwright (when specs exist)
+        if: steps.detect.outputs.spec_count != '0'
+        run: |
+          set -euo pipefail
+          if [ ! -f package.json ]; then
+            echo "::error::Playwright specs found but no package.json — add Node project roots for e2e"
+            exit 1
+          fi
+          npm ci
+          npx playwright install --with-deps
+          npx playwright test
