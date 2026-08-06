@@ -101,3 +101,5 @@ Upstream macOS sources remain at the **repository root**. Do not delete them.
 ## License
 
 GNU GPL v3 — see `../LICENSE` and `../NOTICE`.
+
+<!-- CI retrigger 20260806172719 -->
