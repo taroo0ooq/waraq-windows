@@ -57,3 +57,5 @@ Flip **Status** away from N/A when any of the following land:
 
 Installer + Authenticode paths do **not** introduce an app-owned HTTP attack surface. DAST remains **N/A**.  
 A prior PR #6 failure was **workflow cancellation** (concurrency), not a content/doc failure — fixed in `.github/workflows/dast.yml`.
+
+<!-- phase6-fix: retrigger CI after runner stall 2026-08-06T17:26:52Z -->
