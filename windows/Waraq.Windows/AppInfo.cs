@@ -12,15 +12,11 @@ namespace Waraq.Windows;
 public static class AppInfo
 {
     public const string ProductName = "Waraq for Windows";
-    public const string Version = "0.1.0-alpha";
+    public const string Version = "0.2.0-alpha";
     public const string License = "GPL-3.0-or-later";
     public const string UpstreamUrl = "https://github.com/bahamut42/waraq";
     public const string RepoUrl = "https://github.com/taroo0ooq/waraq-windows";
 
-    /// <summary>
-    /// Single-line status for the Phase 1a shell.
-    /// Wallpaper host is scaffolded but not attached to WorkerW yet.
-    /// </summary>
-    public static string ScaffoldStatus =>
-        $"{ProductName} {Version} — scaffold (WorkerW host not attached)";
+    public static string StatusLine =>
+        $"{ProductName} {Version} — Phase 2 MVP (video + GIF via WorkerW)";
 }

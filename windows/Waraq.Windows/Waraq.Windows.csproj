@@ -14,7 +14,7 @@
     <Authors>Waraq Windows contributors</Authors>
     <Description>GPL-3.0 live wallpaper host for Windows (derivative of bahamut42/waraq).</Description>
     <Copyright>Copyright (C) Waraq authors and Waraq Windows contributors</Copyright>
-    <Version>0.1.0-alpha</Version>
+    <Version>0.2.0-alpha</Version>
     <ApplicationIcon />
     <NeutralLanguage>en-US</NeutralLanguage>
   </PropertyGroup>

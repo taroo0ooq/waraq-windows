@@ -2,7 +2,7 @@
 > This repository is a **GPL-3.0 derivative** of [bahamut42/waraq](https://github.com/bahamut42/waraq) (macOS live wallpapers).  
 > Goal: develop a **Windows** version. Upstream macOS Swift/AppKit tree is kept at repo root for provenance and reference.  
 > License: **GNU GPL v3** — stays free/open; see `LICENSE` and `NOTICE`.  
-> Status: **Phase 1a scaffold** — C# / .NET 8 / WPF under `windows/` + [ADR 0001](docs/adr/0001-windows-tech-stack-and-wallpaper-host.md). Live wallpaper attach is **not** shipped yet.
+> Status: **Phase 2 MVP** — video + GIF live wallpaper via WorkerW under `windows/` ([ADR 0001](docs/adr/0001-windows-tech-stack-and-wallpaper-host.md)). Gallery/multi-profile polish not shipped.
 
 ---
 
@@ -227,9 +227,9 @@ dotnet test WaraqWindows.sln -c Release
 dotnet run --project Waraq.Windows -c Release
 ```
 
-Phase 1a ships a **settings shell** plus a non-destructive **Progman/WorkerW probe**. It does **not** yet parent a live wallpaper surface or play video/GIF (Phase 2+).
+Phase 2 MVP: pick a local **video** or **GIF**, **Apply wallpaper** (WorkerW host across the virtual desktop), **Stop** to tear down. App exit also stops wallpaper.
 
-CI/CD, SAST, DAST, and Playwright workflows for the Windows tree are owned by the next Agency stage (Pipeline Warden) after this scaffold is green.
+Deferred: battery/fullscreen pause, per-display profiles, gallery APIs, procedural pack.
 
 ## Building macOS upstream sources (reference only)
 
