@@ -1,0 +1,60 @@
+# WRQ-WIN-001 Phase 1b — Windows .NET build + test (additive to macOS build.yml)
+name: windows-ci
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows-ci.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: windows-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: Build and Test (windows-latest)
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        working-directory: windows
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Show toolchain
+        run: |
+          dotnet --info
+          dotnet --list-sdks
+
+      - name: Restore
+        run: dotnet restore WaraqWindows.sln
+
+      - name: Build (Release)
+        run: dotnet build WaraqWindows.sln -c Release --no-restore
+
+      - name: Test (Release)
+        run: dotnet test WaraqWindows.sln -c Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-test-results
+          path: windows/**/TestResults/**
+          if-no-files-found: ignore

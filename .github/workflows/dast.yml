@@ -1,0 +1,55 @@
+# WRQ-WIN-001 Phase 1b — DAST gate (explicit N/A until network surface exists)
+# Standing policy: workflow must exist; N/A is an allowed green outcome with documentation.
+name: dast
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - ".github/workflows/dast.yml"
+      - "docs/security/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - ".github/workflows/dast.yml"
+      - "docs/security/**"
+  workflow_dispatch:
+
+concurrency:
+  group: dast-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dast-gate:
+    name: DAST gate (N/A until network surface)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify DAST posture document
+        run: |
+          set -euo pipefail
+          DOC="docs/security/DAST.md"
+          if [ ! -f "$DOC" ]; then
+            echo "::error::Missing $DOC — DAST posture must be documented"
+            exit 1
+          fi
+          if ! grep -qiE 'status:\s*(N/A|NA|not applicable)' "$DOC"; then
+            echo "::error::$DOC must declare Status: N/A (or Not applicable) while no network attack surface exists"
+            exit 1
+          fi
+          echo "DAST posture document present:"
+          sed -n '1,80p' "$DOC"
+
+      - name: Gate result
+        run: |
+          echo "## DAST result: N/A (documented)" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "No HTTP/network listener is exposed by the Windows scaffold (local WPF desktop app)." >> "$GITHUB_STEP_SUMMARY"
+          echo "Dynamic application security testing is deferred until a network surface exists (e.g. local gallery API proxy, update endpoint, or packaged web UI)." >> "$GITHUB_STEP_SUMMARY"
+          echo "See \`docs/security/DAST.md\`." >> "$GITHUB_STEP_SUMMARY"

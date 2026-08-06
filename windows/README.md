@@ -47,6 +47,17 @@ windows/
 
 Upstream macOS sources remain at the **repository root** (`App/`, `Core/`, `Engines/`, …). Do not delete them.
 
+## CI (Phase 1b)
+
+Additive GitHub Actions (macOS `build.yml` unchanged):
+
+| Workflow | Path | Purpose |
+|----------|------|---------|
+| `windows-ci` | `.github/workflows/windows-ci.yml` | `windows-latest` restore / build / test `WaraqWindows.sln` |
+| `codeql` | `.github/workflows/codeql.yml` | SAST — CodeQL csharp |
+| `dast` | `.github/workflows/dast.yml` | DAST gate — **N/A** until network surface ([docs/security/DAST.md](../docs/security/DAST.md)) |
+| `playwright` | `.github/workflows/playwright.yml` | Playwright stub until `e2e` specs exist |
+
 ## License
 
 GNU GPL v3 — see `../LICENSE` and `../NOTICE`.
