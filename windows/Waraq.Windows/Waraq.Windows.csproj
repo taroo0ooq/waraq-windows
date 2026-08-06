@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Waraq.Windows</RootNamespace>
+    <AssemblyName>Waraq.Windows</AssemblyName>
+    <Product>Waraq for Windows</Product>
+    <Company>Waraq Windows contributors</Company>
+    <Authors>Waraq Windows contributors</Authors>
+    <Description>GPL-3.0 live wallpaper host for Windows (derivative of bahamut42/waraq).</Description>
+    <Copyright>Copyright (C) Waraq authors and Waraq Windows contributors</Copyright>
+    <Version>0.1.0-alpha</Version>
+    <ApplicationIcon />
+    <NeutralLanguage>en-US</NeutralLanguage>
+  </PropertyGroup>
+
+</Project>

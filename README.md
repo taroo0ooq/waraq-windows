@@ -1,8 +1,8 @@
 > **Windows port workspace (taroo0ooq/waraq-windows)**  
 > This repository is a **GPL-3.0 derivative** of [bahamut42/waraq](https://github.com/bahamut42/waraq) (macOS live wallpapers).  
-> Goal: develop a **Windows** version. Upstream remains macOS-only Swift/AppKit.  
+> Goal: develop a **Windows** version. Upstream macOS Swift/AppKit tree is kept at repo root for provenance and reference.  
 > License: **GNU GPL v3** — stays free/open; see `LICENSE` and `NOTICE`.  
-> Status: bootstrap — source mirrored from upstream; Windows implementation not shipped yet.
+> Status: **Phase 1a scaffold** — C# / .NET 8 / WPF under `windows/` + [ADR 0001](docs/adr/0001-windows-tech-stack-and-wallpaper-host.md). Live wallpaper attach is **not** shipped yet.
 
 ---
 
@@ -43,7 +43,7 @@ Waraq started as a proof of concept I built for myself. I wanted live wallpapers
 - Doesn't host, mirror, or proxy any content from external sites. The Browse Web tab is just curated bookmarks - you download from those sites directly under their personal-use licenses, then drag the MP4 into Waraq.
 - Doesn't support Wallpaper Engine's `.we` scene files. Only the video subset works. Scenes are a proprietary editor format with their own runtime.
 - Doesn't download from YouTube. We tried. YouTube actively blocks embedding for most videos, and downloading violates their ToS.
-- Doesn't run on Windows, Linux, iPhone, or iPad. macOS 14 Sonoma and up only.
+- **Upstream macOS app** doesn't run on Windows, Linux, iPhone, or iPad (macOS 14+ only). This fork adds a separate Windows scaffold under `windows/` (see below) — not feature-complete yet.
 - Doesn't cost money. Now or ever. See the license section.
 
 ## Privacy
@@ -200,22 +200,49 @@ If Waraq is using more resources than you're comfortable with, you can dial all 
 - Roughly 80 MB disk for the app itself
 - More disk for whatever wallpapers you import (your call)
 
-## Building from source (developers only)
+## Windows port (this repository)
 
-You do **not** need to do this to use Waraq — [download a DMG or PKG](#install) above. This section is only for people who want to modify the code or contribute.
+Active Windows work lives under **`windows/`**. Architecture decision: **C# / .NET 8 + WPF**, wallpaper host strategy **WorkerW (Progman)**. Full write-up: [docs/adr/0001-windows-tech-stack-and-wallpaper-host.md](docs/adr/0001-windows-tech-stack-and-wallpaper-host.md).
 
-Requires Xcode 16+ and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
+| Item | Path |
+|------|------|
+| Solution | `windows/WaraqWindows.sln` |
+| App | `windows/Waraq.Windows/` |
+| Tests | `windows/Waraq.Windows.Tests/` |
+| Windows README | [windows/README.md](windows/README.md) |
+
+### Requirements (Windows developers)
+
+- Windows 10 or 11
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
+
+### Build, test, run (Windows)
+
+```powershell
+git clone https://github.com/taroo0ooq/waraq-windows.git
+cd waraq-windows/windows
+dotnet restore WaraqWindows.sln
+dotnet build WaraqWindows.sln -c Release
+dotnet test WaraqWindows.sln -c Release
+dotnet run --project Waraq.Windows -c Release
+```
+
+Phase 1a ships a **settings shell** plus a non-destructive **Progman/WorkerW probe**. It does **not** yet parent a live wallpaper surface or play video/GIF (Phase 2+).
+
+CI/CD, SAST, DAST, and Playwright workflows for the Windows tree are owned by the next Agency stage (Pipeline Warden) after this scaffold is green.
+
+## Building macOS upstream sources (reference only)
+
+The original macOS app sources remain at the repo root. You do **not** need them to work on the Windows port.
+
+Requires macOS, Xcode 16+, and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
 
 ```bash
-git clone https://github.com/bahamut42/waraq.git
-cd waraq
+git clone https://github.com/taroo0ooq/waraq-windows.git
+cd waraq-windows
 xcodegen generate
 open Waraq.xcodeproj
 ```
-
-Build with Cmd+B. Run with Cmd+R. Tests with Cmd+U.
-
-Or build from the command line (matches what CI runs):
 
 ```bash
 xcodebuild \
@@ -225,19 +252,9 @@ xcodebuild \
   -configuration Debug \
   CODE_SIGNING_ALLOWED=NO \
   build
-
-xcodebuild \
-  -project Waraq.xcodeproj \
-  -scheme Waraq \
-  -destination 'platform=macOS' \
-  -configuration Debug \
-  CODE_SIGNING_ALLOWED=NO \
-  test
 ```
 
-`Waraq.xcodeproj` is gitignored - it's generated from `project.yml`. If you pull changes that touch the project structure, re-run `xcodegen generate`.
-
-For deeper notes on architecture, conventions, and what not to touch when modifying the source, see [`CLAUDE.md`](CLAUDE.md).
+`Waraq.xcodeproj` is gitignored — generated from `project.yml`. Deeper macOS notes: [`CLAUDE.md`](CLAUDE.md).
 
 ## License
 
