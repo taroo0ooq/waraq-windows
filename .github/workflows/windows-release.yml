@@ -1,6 +1,6 @@
-# WRQ-WIN-001 Phase 5 — Windows release packaging (Ship)
-# Produces a reproducible win-x64 zip on workflow_dispatch and on tags win-v*.
-# Draft GitHub Release on tags; optional draft on workflow_dispatch.
+# WRQ-WIN-001 Phase 5+6 — Windows release packaging + installer (Ship)
+# Zip (portable) + Inno Setup installer, self-signed Authenticode.
+# Triggers: tags win-v* | workflow_dispatch
 name: windows-release
 
 on:
@@ -28,13 +28,14 @@ permissions:
 
 jobs:
   package:
-    name: Package win-x64 (self-contained)
+    name: Package zip + signed installer
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
 
     outputs:
       version: ${{ steps.meta.outputs.version }}
       artifact_name: ${{ steps.meta.outputs.artifact_name }}
+      setup_name: ${{ steps.meta.outputs.setup_name }}
 
     steps:
       - name: Checkout
@@ -51,65 +52,112 @@ jobs:
         run: |
           $refName = $env:GITHUB_REF_NAME
           if ($env:GITHUB_REF -like 'refs/tags/win-v*') {
-            $version = $refName.Substring(5)  # strip win-v
+            $version = $refName.Substring(5)
           } elseif ('${{ inputs.version_suffix }}') {
             $version = '${{ inputs.version_suffix }}'
           } else {
             $version = "0.2.0-alpha+$env:GITHUB_RUN_NUMBER"
           }
-          $safe = ($version -replace '[\\/:\s]', '-')
-          $artifact = "Waraq.Windows-win-x64-$safe"
+          $safe = ($version -replace '[\\/:\s\+]', '-')
           "version=$version" >> $env:GITHUB_OUTPUT
-          "artifact_name=$artifact" >> $env:GITHUB_OUTPUT
-          Write-Host "version=$version artifact=$artifact"
+          "artifact_name=Waraq.Windows-win-x64-$safe" >> $env:GITHUB_OUTPUT
+          "setup_name=Waraq.Windows-Setup-win-x64-$safe" >> $env:GITHUB_OUTPUT
+          Write-Host "version=$version safe=$safe"
 
-      - name: Restore + test (Release)
-        working-directory: windows
-        run: |
-          dotnet restore WaraqWindows.sln
-          dotnet test WaraqWindows.sln -c Release --verbosity minimal
-
-      - name: Publish self-contained win-x64
-        working-directory: windows
+      - name: Install Inno Setup 6
         shell: pwsh
         run: |
-          dotnet publish Waraq.Windows/Waraq.Windows.csproj `
-            -c Release `
-            -r win-x64 `
-            --self-contained true `
-            -p:PublishSingleFile=true `
-            -p:IncludeNativeLibrariesForSelfExtract=true `
-            -p:EnableCompressionInSingleFile=true `
-            -p:DebugType=None `
-            -p:DebugSymbols=false `
-            -p:Version=${{ steps.meta.outputs.version }} `
-            -o ../artifacts/publish
+          choco install innosetup -y --no-progress
+          $iscc = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "${env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $iscc) { throw "ISCC.exe missing after choco install" }
+          Write-Host "ISCC=$iscc"
+          & $iscc /? | Select-Object -First 3
 
-      - name: Stage zip + SHA256
+      - name: Build installer (publish + self-sign + Inno)
+        shell: pwsh
+        env:
+          CODE_SIGNING_PFX_BASE64: ${{ secrets.CODE_SIGNING_PFX_BASE64 }}
+          CODE_SIGNING_PFX_PASSWORD: ${{ secrets.CODE_SIGNING_PFX_PASSWORD }}
+        run: |
+          $version = '${{ steps.meta.outputs.version }}'
+          $pfx = ''
+          $pass = ''
+          $gen = $true
+          if ($env:CODE_SIGNING_PFX_BASE64 -and $env:CODE_SIGNING_PFX_PASSWORD) {
+            New-Item -ItemType Directory -Force -Path artifacts/certs | Out-Null
+            $pfx = (Resolve-Path .).Path + '\artifacts\certs\codesign-secret.pfx'
+            [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CODE_SIGNING_PFX_BASE64))
+            $pass = $env:CODE_SIGNING_PFX_PASSWORD
+            $gen = $false
+            Write-Host "Using repository CODE_SIGNING_PFX secret"
+          } else {
+            Write-Host "No CODE_SIGNING_PFX secret — generating ephemeral self-signed cert"
+          }
+          $args = @{
+            Version = $version
+            SkipTests = $false
+          }
+          if ($gen) {
+            & pwsh -File windows/scripts/Build-Installer.ps1 -Version $version -GenerateCiCert
+          } else {
+            & pwsh -File windows/scripts/Build-Installer.ps1 -Version $version -PfxPath $pfx -PfxPassword $pass
+          }
+          if ($LASTEXITCODE -ne 0) { throw "Build-Installer.ps1 failed: $LASTEXITCODE" }
+
+      - name: Stage portable zip from publish tree
         shell: pwsh
         run: |
           $artifact = '${{ steps.meta.outputs.artifact_name }}'
           $stage = "artifacts/stage/$artifact"
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item -Path "artifacts/publish/*" -Destination $stage -Recurse -Force
-          Copy-Item LICENSE $stage
-          Copy-Item NOTICE $stage
-          Copy-Item docs/install/WINDOWS.md (Join-Path $stage 'README-INSTALL.md')
+          Copy-Item LICENSE $stage -Force
+          Copy-Item NOTICE $stage -Force
+          Copy-Item docs/install/WINDOWS.md (Join-Path $stage 'README-INSTALL.md') -Force
           $zip = "artifacts/$artifact.zip"
           if (Test-Path $zip) { Remove-Item -Force $zip }
           Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -Force
           $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower()
-          Set-Content -Path artifacts/SHA256SUMS.txt -Value ("{0}  {1}" -f $hash, (Split-Path $zip -Leaf)) -Encoding ascii
-          Get-ChildItem artifacts | Format-Table Name, Length
-          Get-Content artifacts/SHA256SUMS.txt
+          Set-Content -Path artifacts/SHA256SUMS-portable.txt -Value ("{0}  {1}" -f $hash, (Split-Path $zip -Leaf)) -Encoding ascii
+          Get-ChildItem artifacts -Recurse -File | Select-Object FullName, Length | Format-Table -AutoSize
 
-      - name: Upload workflow artifact
+      - name: Verify Authenticode signatures
+        shell: pwsh
+        run: |
+          $setup = Get-ChildItem artifacts/installer -Filter *.exe | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          $exe = "artifacts/publish/Waraq.Windows.exe"
+          foreach ($f in @($exe, $setup.FullName)) {
+            $s = Get-AuthenticodeSignature -FilePath $f
+            Write-Host "FILE $f"
+            Write-Host "  Status=$($s.Status) StatusMessage=$($s.StatusMessage)"
+            Write-Host "  Subject=$($s.SignerCertificate.Subject)"
+            Write-Host "  Thumbprint=$($s.SignerCertificate.Thumbprint)"
+            if (-not $s.SignerCertificate) { throw "No signature on $f" }
+          }
+          # Self-signed often NotTrusted until CER imported — require signature present, not chain trust
+          if ($setup.Length -lt 1MB) { throw "Setup.exe unexpectedly small" }
+
+      - name: Upload portable zip artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ steps.meta.outputs.artifact_name }}
+          name: ${{ steps.meta.outputs.artifact_name }}-portable
           path: |
             artifacts/${{ steps.meta.outputs.artifact_name }}.zip
-            artifacts/SHA256SUMS.txt
+            artifacts/SHA256SUMS-portable.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload installer + cert artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.setup_name }}
+          path: |
+            artifacts/installer/**
+            artifacts/certs/*.cer
+            artifacts/certs/*.CER
           if-no-files-found: error
           retention-days: 30
 
@@ -124,23 +172,25 @@ jobs:
           body: |
             ## Waraq for Windows — ${{ steps.meta.outputs.version }}
 
-            GPL-3.0 derivative of [bahamut42/waraq](https://github.com/bahamut42/waraq).
+            GPL-3.0 · [install guide](https://github.com/taroo0ooq/waraq-windows/blob/main/docs/install/WINDOWS.md)
 
-            ### Install (quick)
-            1. Download `Waraq.Windows-win-x64-*.zip` and optional `SHA256SUMS.txt`
-            2. Extract to a folder you control
-            3. Run `Waraq.Windows.exe`
-            4. Browse a local video/GIF → **Apply wallpaper**
+            ### Recommended: Installer
+            1. Download `Waraq.Windows-Setup-win-x64-*.exe`
+            2. Optional: import `WaraqWindows-CodeSigning.cer` (self-signed trust — see install docs)
+            3. Run Setup (per-user under `%LOCALAPPDATA%\Programs\WaraqWindows`)
+            4. Launch → Browse video/GIF → Apply wallpaper
 
-            Full steps: [docs/install/WINDOWS.md](https://github.com/taroo0ooq/waraq-windows/blob/main/docs/install/WINDOWS.md)
+            ### Secondary: Portable zip
+            Extract `Waraq.Windows-win-x64-*.zip` and run `Waraq.Windows.exe`.
 
-            ### Notes
-            - **Self-contained** win-x64 (no separate .NET runtime install)
-            - **Not code-signed** — SmartScreen may warn (expected for unsigned OSS)
-            - Corresponding source: this repository (GPL-3.0)
+            ### Signing / prereqs
+            - Authenticode: **project self-signed** (not EV). SmartScreen may still warn.
+            - Payload is **self-contained** (.NET 8 runtime bundled). No third-party mirrors.
           files: |
             artifacts/${{ steps.meta.outputs.artifact_name }}.zip
-            artifacts/SHA256SUMS.txt
+            artifacts/SHA256SUMS-portable.txt
+            artifacts/installer/*
+            artifacts/certs/*.cer
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -156,12 +206,14 @@ jobs:
           body: |
             ## Waraq for Windows — ${{ steps.meta.outputs.version }}
 
-            Draft created from workflow_dispatch (Pipeline Warden Phase 5).
+            Phase 6 installer draft (workflow_dispatch).
 
             Install: [docs/install/WINDOWS.md](https://github.com/taroo0ooq/waraq-windows/blob/main/docs/install/WINDOWS.md)
           files: |
             artifacts/${{ steps.meta.outputs.artifact_name }}.zip
-            artifacts/SHA256SUMS.txt
+            artifacts/SHA256SUMS-portable.txt
+            artifacts/installer/*
+            artifacts/certs/*.cer
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -169,10 +221,12 @@ jobs:
         shell: pwsh
         run: |
           @"
-          ## windows-release
+          ## windows-release (Phase 6)
 
           - version: `${{ steps.meta.outputs.version }}`
-          - artifact: `${{ steps.meta.outputs.artifact_name }}.zip`
+          - portable: `${{ steps.meta.outputs.artifact_name }}.zip`
+          - setup: `${{ steps.meta.outputs.setup_name }}.exe`
           - run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-          - install docs: ``docs/install/WINDOWS.md``
+          - install: ``docs/install/WINDOWS.md``
+          - ADR: ``docs/adr/0002-windows-installer-and-signing.md``
           "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
