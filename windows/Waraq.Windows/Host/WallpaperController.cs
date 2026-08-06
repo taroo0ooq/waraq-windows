@@ -40,18 +40,16 @@ public sealed class WallpaperController : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        if (!System.IO.File.Exists(path))
-        {
-            throw new System.IO.FileNotFoundException("Media file not found.", path);
-        }
-
-        var full = System.IO.Path.GetFullPath(path);
+        // Secure path gate: local drive file only (no UNC/URL), size soft-caps.
+        var full = LocalMediaPath.NormalizeExistingLocalFile(path);
         var kind = MediaPathClassifier.Classify(full);
         if (kind == MediaKind.Unknown)
         {
             throw new NotSupportedException(
                 "Unsupported media type. MVP supports video (.mp4, .webm, .mkv, .avi, .mov, .wmv, .m4v) and .gif.");
         }
+
+        LocalMediaPath.EnsureWithinSizeLimit(full, kind);
 
         StopInternal();
 
