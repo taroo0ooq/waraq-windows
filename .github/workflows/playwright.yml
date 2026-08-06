@@ -1,5 +1,7 @@
-# WRQ-WIN-001 Phase 1b — Playwright workflow stub (UI e2e deferred)
-# Stub stays green with explicit skip until Stagecraft QA owns real specs.
+# WRQ-WIN-001 Phase 4 — QA gate (Stagecraft QA)
+# Browser Playwright is N/A for WPF desktop. This workflow is the required "playwright"
+# GitHub check name and now runs a real Windows QA smoke: build, unit/integration tests,
+# fixture generation, and residual-risk summary. Not an empty stub.
 name: playwright
 
 on:
@@ -22,59 +24,67 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  playwright-stub:
-    name: Playwright stub (no specs yet)
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+  windows-qa-smoke:
+    name: Windows QA smoke (WPF / WorkerW)
+    runs-on: windows-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Detect Playwright specs
-        id: detect
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Setup FFmpeg (fixtures)
+        uses: FedericoCarboni/setup-ffmpeg@v3
+        with:
+          ffmpeg-version: release
+
+      - name: Run Windows QA smoke script
+        shell: pwsh
+        run: |
+          Set-StrictMode -Version Latest
+          $ErrorActionPreference = "Stop"
+          ./e2e/windows-qa-smoke.ps1 -Configuration Release
+
+      - name: Upload QA artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-qa-smoke-results
+          path: |
+            e2e/out/**
+            windows/**/TestResults/**
+          if-no-files-found: ignore
+
+  browser-playwright-na:
+    name: Browser Playwright N/A (documented)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Residual risk — no web surface
         run: |
           set -euo pipefail
-          count=0
-          if [ -d e2e ]; then
-            count=$(find e2e -type f \( -name '*.spec.ts' -o -name '*.spec.js' -o -name '*.test.ts' -o -name '*.test.js' \) | wc -l | tr -d ' ')
-          fi
-          echo "spec_count=${count}" >> "$GITHUB_OUTPUT"
-          echo "Found ${count} Playwright spec file(s)"
-
-      - name: Stub skip (Phase 1b)
-        if: steps.detect.outputs.spec_count == '0'
-        run: |
-          echo "## Playwright: STUB / SKIP" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "No \`e2e/**/*.spec.*\` files present." >> "$GITHUB_STEP_SUMMARY"
-          echo "Waraq Windows is a WPF desktop scaffold; browser Playwright coverage is not applicable until a web surface or explicit desktop automation plan is owned by Stagecraft QA." >> "$GITHUB_STEP_SUMMARY"
-          echo "Workflow remains required (hardcoded gate). Job exits 0 as documented stub." >> "$GITHUB_STEP_SUMMARY"
-          mkdir -p e2e
-          if [ ! -f e2e/README.md ]; then
-            cat > e2e/README.md <<'EOF'
-          # e2e (Playwright) — reserved
-
-          Phase 1b stub: no specs yet.
-
-          When UI automation is scheduled (Stagecraft QA via Gatekeeper Nova):
-          - Add Playwright config + specs under `e2e/`
-          - Extend `.github/workflows/playwright.yml` to install browsers and run `npx playwright test`
-          - Prefer testing any future web admin/gallery surfaces; desktop WPF may use a different harness
-
-          See work_id WRQ-WIN-001 stage board.
-          EOF
-          fi
-          echo "Stub complete — green without fake test runs."
-
-      - name: Run Playwright (when specs exist)
-        if: steps.detect.outputs.spec_count != '0'
-        run: |
-          set -euo pipefail
-          if [ ! -f package.json ]; then
-            echo "::error::Playwright specs found but no package.json — add Node project roots for e2e"
-            exit 1
-          fi
-          npm ci
-          npx playwright install --with-deps
-          npx playwright test
+          {
+            echo "## Browser Playwright: N/A"
+            echo ""
+            echo "Waraq Windows MVP is **WPF desktop** (WorkerW + MediaElement/GIF)."
+            echo "There is **no browser UI** in scope for WRQ-WIN-001 Phase 4."
+            echo ""
+            echo "| Item | Status |"
+            echo "|------|--------|"
+            echo "| Browser Playwright specs | N/A — not applicable |"
+            echo "| Windows QA smoke (sibling job) | Required real gate |"
+            echo "| Full WinAppDriver/FlaUI UI drive | Deferred residual (see docs/qa) |"
+            echo ""
+            echo "This job exits 0 as an explicit N/A documentation gate so the workflow"
+            echo "name \`playwright\` remains a hard required check without fake browser runs."
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+          test -f e2e/README.md
+          test -f docs/qa/WRQ-WIN-001-phase4-qa-matrix.md || test -f e2e/README.md
