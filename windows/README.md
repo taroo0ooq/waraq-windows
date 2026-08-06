@@ -1,14 +1,15 @@
 # Waraq for Windows (`windows/`)
 
-GPL-3.0 Windows live-wallpaper scaffold for [taroo0ooq/waraq-windows](https://github.com/taroo0ooq/waraq-windows).
+GPL-3.0 Windows live-wallpaper app for [taroo0ooq/waraq-windows](https://github.com/taroo0ooq/waraq-windows).
 
-**Stack:** C# / .NET 8 / WPF — see [ADR 0001](../docs/adr/0001-windows-tech-stack-and-wallpaper-host.md).  
-**Host strategy:** WorkerW (Progman) — probe only in Phase 1a; attach + playback in Phase 2.
+**Stack:** C# / .NET 8 / WPF — [ADR 0001](../docs/adr/0001-windows-tech-stack-and-wallpaper-host.md).  
+**Host:** WorkerW (Progman) behind desktop icons.  
+**MVP engines:** local **video** (MediaElement / Media Foundation) and **GIF** (GifBitmapDecoder).
 
 ## Prerequisites
 
-- Windows 10/11
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (`dotnet --list-sdks` should list `8.x`)
+- Windows 10 or 11
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
 
 ## Build
 
@@ -25,38 +26,40 @@ cd windows
 dotnet test WaraqWindows.sln -c Release
 ```
 
-## Run (settings shell)
+## Run
 
 ```powershell
 cd windows
 dotnet run --project Waraq.Windows -c Release
 ```
 
-The window is a **scaffold shell**. Use **Probe desktop host** to locate Progman/WorkerW without parenting a wallpaper HWND yet.
+1. **Browse…** — pick a local `.mp4` / `.webm` / `.gif` (etc.)
+2. Choose **Fit** (Fill / Stretch / Fit)
+3. **Apply wallpaper** — attaches a surface under WorkerW across the virtual desktop
+4. **Stop** — tears down the surface (also runs on app exit)
+
+**Probe host** only locates Progman/WorkerW without applying media.
+
+### MVP limits / follow-ups
+
+- Battery pause and fullscreen-app pause are **not** implemented yet (documented deferred).
+- One surface spans the full virtual desktop (not polished per-monitor profiles).
+- Codec support depends on system Media Foundation / installed codecs.
+- Explorer restarts may require re-Apply.
 
 ## Layout
 
 ```
 windows/
   WaraqWindows.sln
-  Waraq.Windows/           # app
-    Host/                  # WorkerW discovery (Phase 2: attach surfaces)
-    Shell/                 # settings UI
-  Waraq.Windows.Tests/     # xUnit
+  Waraq.Windows/
+    Host/       # WorkerW attach + WallpaperController
+    Engines/    # video + GIF views, media classifier
+    Shell/      # settings UI
+  Waraq.Windows.Tests/
 ```
 
-Upstream macOS sources remain at the **repository root** (`App/`, `Core/`, `Engines/`, …). Do not delete them.
-
-## CI (Phase 1b)
-
-Additive GitHub Actions (macOS `build.yml` unchanged):
-
-| Workflow | Path | Purpose |
-|----------|------|---------|
-| `windows-ci` | `.github/workflows/windows-ci.yml` | `windows-latest` restore / build / test `WaraqWindows.sln` |
-| `codeql` | `.github/workflows/codeql.yml` | SAST — CodeQL csharp |
-| `dast` | `.github/workflows/dast.yml` | DAST gate — **N/A** until network surface ([docs/security/DAST.md](../docs/security/DAST.md)) |
-| `playwright` | `.github/workflows/playwright.yml` | Playwright stub until `e2e` specs exist |
+Upstream macOS sources remain at the **repository root**. Do not delete them.
 
 ## License
 
