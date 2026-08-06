@@ -1,0 +1,17 @@
+Waraq Windows (waraq-windows)
+=============================
+
+This repository is a derivative work based on:
+
+  Waraq — https://github.com/bahamut42/waraq
+  Copyright (C) the original Waraq authors and contributors
+  Licensed under the GNU General Public License v3.0 (see LICENSE)
+
+Upstream project name "Waraq" is Arabic for paper (ورق).
+
+This fork/derivative targets a Windows port and related engineering.
+It remains free software under GPL-3.0. You must preserve this notice
+and the LICENSE when redistributing modified versions.
+
+Upstream remote (for reference / sync):
+  https://github.com/bahamut42/waraq

@@ -1,3 +1,11 @@
+> **Windows port workspace (taroo0ooq/waraq-windows)**  
+> This repository is a **GPL-3.0 derivative** of [bahamut42/waraq](https://github.com/bahamut42/waraq) (macOS live wallpapers).  
+> Goal: develop a **Windows** version. Upstream remains macOS-only Swift/AppKit.  
+> License: **GNU GPL v3** — stays free/open; see `LICENSE` and `NOTICE`.  
+> Status: bootstrap — source mirrored from upstream; Windows implementation not shipped yet.
+
+---
+
 <p align="center">
   <img src="docs/hero.svg" alt="Waraq - Live wallpapers for macOS" width="100%">
 </p>
