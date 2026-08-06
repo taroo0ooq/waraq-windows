@@ -4,9 +4,9 @@
 |-------|--------|
 | **Status** | **N/A** (Not applicable) |
 | **work_id** | WRQ-WIN-001 |
-| **phase** | 3 Secure (Cipher Shield) — reaffirm after Phase 2 MVP |
+| **phase** | 6 Installer (reaffirm N/A — still no network surface) |
 | **last_reviewed** | 2026-08-06 |
-| **reviewer_desk** | Cipher Shield |
+| **reviewer_desk** | Atlas Forge (Phase 6-fix CI harden) / Cipher Shield (posture) |
 | **owner_desk** | Pipeline Warden (gate) → Cipher Shield (deep scans when surface exists) |
 
 ## Why N/A
@@ -43,10 +43,19 @@ Flip **Status** away from N/A when any of the following land:
 
 - SAST: `.github/workflows/codeql.yml` (CodeQL csharp)
 - Build/test: `.github/workflows/windows-ci.yml`
-- Playwright stub: `.github/workflows/playwright.yml`
+- Playwright / Windows QA smoke: `.github/workflows/playwright.yml`
 - macOS upstream CI (unchanged): `.github/workflows/build.yml`
+- DAST gate workflow: `.github/workflows/dast.yml` — **must finish SUCCESS** when Status is N/A  
+  (Phase 6-fix: `cancel-in-progress: false` so required checks are not cancelled mid-run)
 
 ## Phase 3 evidence
 
 - Secure review: `docs/security/WRQ-WIN-001-phase3-secure-review.md`
 - CodeQL csharp on `main` / Phase 3 PR (see Actions)
+
+## Phase 6-fix note
+
+Installer + Authenticode paths do **not** introduce an app-owned HTTP attack surface. DAST remains **N/A**.  
+A prior PR #6 failure was **workflow cancellation** (concurrency), not a content/doc failure — fixed in `.github/workflows/dast.yml`.
+
+<!-- phase6-fix: retrigger CI after runner stall 2026-08-06T17:26:52Z -->

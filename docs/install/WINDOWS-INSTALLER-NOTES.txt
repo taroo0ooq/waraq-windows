@@ -1,0 +1,26 @@
+Waraq for Windows — Installer notes (read before continuing)
+
+LICENSE
+  This software is licensed under the GNU GPL v3. See LICENSE and NOTICE
+  in the install folder and at https://github.com/taroo0ooq/waraq-windows
+
+CODE SIGNING (SELF-SIGNED)
+  The Setup program and application may be Authenticode-signed with a
+  *project self-signed* certificate (not an EV/OV certificate purchased
+  from a commercial CA). Windows SmartScreen / Defender may still warn.
+
+  Optional: import the project public certificate (.cer) into
+  "Trusted Root" or "Trusted Publishers" only if you understand the risk
+  and obtained the .cer from the official GitHub release/CI artifacts for
+  this repository. Never import certificates from untrusted sources.
+
+PREREQUISITES
+  This installer deploys a *self-contained* build: the .NET 8 runtime is
+  bundled with the application. You do not need to install the .NET
+  Desktop Runtime separately for the default installer payload.
+
+  No third-party download mirrors are used.
+
+SOURCE
+  Corresponding source code is available at:
+  https://github.com/taroo0ooq/waraq-windows

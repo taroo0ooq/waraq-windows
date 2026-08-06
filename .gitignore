@@ -51,11 +51,14 @@ sparkle_private_key
 
 # Signing and notarization secrets
 *.p12
+*.pfx
 *.cer
+*.p7b
 *.provisionprofile
 AuthKey_*.p8
 .env
 .env.local
+artifacts/
 
 # Editor and tooling
 .idea/

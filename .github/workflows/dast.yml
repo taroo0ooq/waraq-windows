@@ -1,31 +1,28 @@
-# WRQ-WIN-001 Phase 1b — DAST gate (explicit N/A until network surface exists)
+# WRQ-WIN-001 — DAST gate (explicit N/A until network surface exists)
 # Standing policy: workflow must exist; N/A is an allowed green outcome with documentation.
+#
+# Hardening (Phase 6-fix / Atlas Forge):
+# - NO concurrency group — required DAST checks were cancelled/queued indefinitely when
+#   cancel-in-progress raced with multi-push PR traffic and runner shortages.
+# - Always run on pull_request to main (required check must not be path-skipped).
+# - Short timeout; pure docs verification only while Status is N/A.
 name: dast
 
 on:
   push:
     branches: [main]
-    paths:
-      - "windows/**"
-      - ".github/workflows/dast.yml"
-      - "docs/security/**"
   pull_request:
     branches: [main]
-    paths:
-      - "windows/**"
-      - ".github/workflows/dast.yml"
-      - "docs/security/**"
   workflow_dispatch:
 
-concurrency:
-  group: dast-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+permissions:
+  contents: read
 
 jobs:
   dast-gate:
     name: DAST gate (N/A until network surface)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     steps:
       - name: Checkout
@@ -39,17 +36,21 @@ jobs:
             echo "::error::Missing $DOC — DAST posture must be documented"
             exit 1
           fi
-          if ! grep -qiE 'status:\s*(N/A|NA|not applicable)' "$DOC"; then
+          if ! grep -qiE 'status:\s*(N/A|NA|not applicable)|\*\*Status\*\*.*\*\*N/A\*\*' "$DOC"; then
             echo "::error::$DOC must declare Status: N/A (or Not applicable) while no network attack surface exists"
             exit 1
           fi
           echo "DAST posture document present:"
-          sed -n '1,80p' "$DOC"
+          sed -n '1,120p' "$DOC"
 
       - name: Gate result
         run: |
-          echo "## DAST result: N/A (documented)" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "No HTTP/network listener is exposed by the Windows scaffold (local WPF desktop app)." >> "$GITHUB_STEP_SUMMARY"
-          echo "Dynamic application security testing is deferred until a network surface exists (e.g. local gallery API proxy, update endpoint, or packaged web UI)." >> "$GITHUB_STEP_SUMMARY"
-          echo "See \`docs/security/DAST.md\`." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## DAST result: N/A (documented)"
+            echo ""
+            echo "No HTTP/network listener is exposed by the Windows app (local WPF desktop)."
+            echo "Dynamic application security testing is deferred until a network surface exists."
+            echo "See \`docs/security/DAST.md\`."
+            echo ""
+            echo "Workflow policy: no concurrency cancel group (Phase 6-fix) so required checks finish SUCCESS."
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -8,23 +8,27 @@ GPL-3.0 Windows live-wallpaper app for [taroo0ooq/waraq-windows](https://github.
 
 ## Install (end users)
 
-See **[docs/install/WINDOWS.md](../docs/install/WINDOWS.md)**.
+**Primary:** [docs/install/WINDOWS.md](../docs/install/WINDOWS.md) — **Setup.exe installer** (self-signed Authenticode).
 
-1. Download the latest `Waraq.Windows-win-x64-*.zip` from [Releases](https://github.com/taroo0ooq/waraq-windows/releases) (or Actions `windows-release` artifacts).
-2. Verify `SHA256SUMS.txt` (recommended).
-3. Extract and run `Waraq.Windows.exe` (self-contained; **not** code-signed — SmartScreen may warn).
+1. Download `Waraq.Windows-Setup-win-x64-*.exe` from [Releases](https://github.com/taroo0ooq/waraq-windows/releases) or Actions `windows-release`.
+2. Optional: import `WaraqWindows-CodeSigning.cer` (see install docs — SmartScreen may still warn).
+3. Run Setup → Start Menu → **Waraq for Windows**.
+
+**Secondary:** portable zip `Waraq.Windows-win-x64-*.zip`.
 
 ### Package locally / CI
 
 ```powershell
-# local (repo root)
-pwsh -File windows/scripts/package-release.ps1
+# installer + self-sign
+pwsh -File windows/scripts/Build-Installer.ps1 -GenerateCiCert
 
-# CI: Actions → windows-release → Run workflow
-# or: git tag win-v0.2.0-alpha && git push origin win-v0.2.0-alpha
+# portable zip
+pwsh -File windows/scripts/package-release.ps1
 ```
 
-Workflow: `.github/workflows/windows-release.yml`
+- Inno script: `installer/waraq-windows.iss`
+- ADR: [0002](../docs/adr/0002-windows-installer-and-signing.md)
+- Workflow: `.github/workflows/windows-release.yml`
 
 ## Prerequisites (from source)
 
@@ -91,9 +95,11 @@ Upstream macOS sources remain at the **repository root**. Do not delete them.
 | `codeql` | SAST csharp |
 | `dast` | DAST N/A gate until network surface |
 | `playwright` | Windows QA smoke |
-| `windows-release` | self-contained zip + optional draft release |
+| `windows-release` | portable zip + signed Inno installer + optional draft release |
 | `build` | macOS upstream CI |
 
 ## License
 
 GNU GPL v3 — see `../LICENSE` and `../NOTICE`.
+
+<!-- CI retrigger 20260806172719 -->
