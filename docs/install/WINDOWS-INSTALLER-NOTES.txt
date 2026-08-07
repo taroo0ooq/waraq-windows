@@ -1,26 +1,24 @@
-Waraq for Windows — Installer notes (read before continuing)
+Waraq for Windows — Installer notes (WRQ-WIN-002 Phase 9)
 
 LICENSE
-  This software is licensed under the GNU GPL v3. See LICENSE and NOTICE
-  in the install folder and at https://github.com/taroo0ooq/waraq-windows
+  GNU GPL v3 — see LICENSE and NOTICE in the install folder and
+  https://github.com/taroo0ooq/waraq-windows
+
+PRODUCT
+  This Setup installs the current WinUI 3 parity app (src/), not the
+  archived WPF MVP under archive/wrq-win-001/.
 
 CODE SIGNING (SELF-SIGNED)
-  The Setup program and application may be Authenticode-signed with a
-  *project self-signed* certificate (not an EV/OV certificate purchased
-  from a commercial CA). Windows SmartScreen / Defender may still warn.
+  Setup and application may be Authenticode-signed with a *project
+  self-signed* certificate (not EV/OV). SmartScreen may still warn.
 
-  Optional: import the project public certificate (.cer) into
-  "Trusted Root" or "Trusted Publishers" only if you understand the risk
-  and obtained the .cer from the official GitHub release/CI artifacts for
-  this repository. Never import certificates from untrusted sources.
+  Optional: import WaraqWindows-CodeSigning.cer from official GitHub
+  Release/CI artifacts only into Trusted Publishers if you accept the risk.
 
 PREREQUISITES
-  This installer deploys a *self-contained* build: the .NET 8 runtime is
-  bundled with the application. You do not need to install the .NET
-  Desktop Runtime separately for the default installer payload.
-
-  No third-party download mirrors are used.
+  Self-contained payload: .NET 8 runtime and Windows App SDK components
+  are bundled. No separate Desktop Runtime install for the default build.
+  No third-party download mirrors.
 
 SOURCE
-  Corresponding source code is available at:
   https://github.com/taroo0ooq/waraq-windows
