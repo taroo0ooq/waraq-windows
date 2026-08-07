@@ -2,43 +2,54 @@
     x:Class="Waraq.Windows.App.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Title="Waraq for Windows">
+    Title="Settings">
 
-    <Grid Background="{ThemeResource ApplicationPageBackgroundThemeBrush}" Padding="28,24">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+    <!-- Phase 2 Settings shell: NavigationView ~190dip sidebar + stub panes (DESIGN.md) -->
+    <Grid>
+        <NavigationView
+            x:Name="NavView"
+            IsBackButtonVisible="Collapsed"
+            IsSettingsVisible="False"
+            OpenPaneLength="190"
+            CompactPaneLength="48"
+            IsPaneToggleButtonVisible="False"
+            PaneDisplayMode="Left"
+            SelectionChanged="NavView_SelectionChanged">
 
-        <TextBlock x:Name="TitleText"
-                   Grid.Row="0"
-                   Style="{StaticResource SubtitleTextBlockStyle}"
-                   TextWrapping="Wrap"/>
+            <NavigationView.PaneFooter>
+                <Grid Padding="12,10" BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Spacing="2" VerticalAlignment="Center">
+                        <TextBlock Text="Advanced" FontWeight="SemiBold" FontSize="12"/>
+                        <TextBlock Text="Full depth controls" FontSize="10" Opacity="0.7"/>
+                    </StackPanel>
+                    <ToggleSwitch x:Name="AdvancedToggle"
+                                  Grid.Column="1"
+                                  OffContent=""
+                                  OnContent=""
+                                  MinWidth="0"
+                                  Toggled="AdvancedToggle_Toggled"/>
+                </Grid>
+            </NavigationView.PaneFooter>
 
-        <TextBlock x:Name="StatusText"
-                   Grid.Row="1"
-                   Margin="0,12,0,0"
-                   Opacity="0.8"
-                   TextWrapping="Wrap"/>
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="2"
-                   Margin="0,20,0,8"
-                   Style="{StaticResource BodyStrongTextBlockStyle}"
-                   Text="Planned Settings panes (Phase 2)"/>
+                <Frame x:Name="ContentFrame" Grid.Row="0"/>
 
-        <ListView x:Name="PanesList"
-                  Grid.Row="3"
-                  SelectionMode="None"
-                  IsItemClickEnabled="False"/>
-
-        <TextBlock x:Name="ProbeText"
-                   Grid.Row="4"
-                   Margin="0,16,0,0"
-                   Opacity="0.7"
-                   TextWrapping="Wrap"
-                   FontSize="12"/>
+                <TextBlock x:Name="FooterStatus"
+                           Grid.Row="1"
+                           Margin="28,8,28,12"
+                           FontSize="11"
+                           Opacity="0.65"
+                           TextWrapping="Wrap"/>
+            </Grid>
+        </NavigationView>
     </Grid>
 </Window>

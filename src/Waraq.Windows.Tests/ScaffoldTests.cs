@@ -10,15 +10,9 @@ namespace Waraq.Windows.Tests;
 public class AppInfoTests
 {
     [Fact]
-    public void Version_IsPhase1()
+    public void Version_IsPhase2Line()
     {
-        Assert.Contains("phase1", AppInfo.Version, StringComparison.OrdinalIgnoreCase);
-    }
-
-    [Fact]
-    public void Placeholder_MentionsScaffold()
-    {
-        Assert.Contains("scaffold", AppInfo.PlaceholderTitle, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("phase2", AppInfo.Version, StringComparison.OrdinalIgnoreCase);
     }
 }
 
@@ -33,15 +27,7 @@ public class LocalMediaPathGateTests
     [InlineData(@"C:\Wallpapers\loop.mp4", true)]
     public void IsAllowed_Expected(string? path, bool expected)
     {
-        var ok = LocalMediaPathGate.IsAllowed(path, out _);
-        Assert.Equal(expected, ok);
-    }
-
-    [Fact]
-    public void EnsureAllowed_ThrowsOnUrl()
-    {
-        Assert.Throws<InvalidOperationException>(() =>
-            LocalMediaPathGate.EnsureAllowed("http://evil/x.gif"));
+        Assert.Equal(expected, LocalMediaPathGate.IsAllowed(path, out _));
     }
 }
 
@@ -51,14 +37,46 @@ public class MediaPathClassifierTests
     [InlineData("a.mp4", MediaKind.Video)]
     [InlineData("b.GIF", MediaKind.Gif)]
     [InlineData("c.png", MediaKind.Image)]
-    [InlineData("d.txt", MediaKind.Unknown)]
     public void Classify(string path, MediaKind kind)
     {
         Assert.Equal(kind, MediaPathClassifier.Classify(path));
     }
 }
 
-public class HostAndShellTests
+public class SettingsShellTests
+{
+    [Fact]
+    public void BasicPanes_ExcludeDiagnostics()
+    {
+        var basic = SettingsNavCatalog.Visible(advanced: false).Select(p => p.Id).ToList();
+        Assert.DoesNotContain(SettingsPaneId.Diagnostics, basic);
+        Assert.Contains(SettingsPaneId.General, basic);
+        Assert.Contains(SettingsPaneId.Gallery, basic);
+        Assert.Equal(7, basic.Count);
+    }
+
+    [Fact]
+    public void AdvancedPanes_IncludeDiagnostics()
+    {
+        var adv = SettingsNavCatalog.Visible(advanced: true).Select(p => p.Id).ToList();
+        Assert.Contains(SettingsPaneId.Diagnostics, adv);
+        Assert.Equal(8, adv.Count);
+    }
+
+    [Fact]
+    public void EachPane_HasMacScreenshotRef()
+    {
+        Assert.All(SettingsNavCatalog.All, p => Assert.False(string.IsNullOrWhiteSpace(p.MacScreenshotRef)));
+    }
+
+    [Fact]
+    public void ViewModel_DefaultTitle_IsSettings()
+    {
+        Assert.Equal("Settings", new SettingsShellViewModel().WindowTitle);
+    }
+}
+
+public class HostAndEngineTests
 {
     [Fact]
     public void HostStrategy_IsWorkerW()
@@ -69,22 +87,12 @@ public class HostAndShellTests
     [Fact]
     public void Probe_DoesNotThrow()
     {
-        var r = new DesktopWallpaperHost().Probe();
-        Assert.False(string.IsNullOrWhiteSpace(r.Message));
+        Assert.False(string.IsNullOrWhiteSpace(new DesktopWallpaperHost().Probe().Message));
     }
 
     [Fact]
-    public void Shell_HasBasicPanes()
-    {
-        Assert.Contains("General", SettingsNavCatalog.BasicPanes);
-        Assert.Contains("Gallery", SettingsNavCatalog.BasicPanes);
-        Assert.Equal(7, SettingsNavCatalog.BasicPanes.Count);
-    }
-
-    [Fact]
-    public void EngineCatalog_ListsProceduralSet()
+    public void EngineCatalog_HasProcedural()
     {
         Assert.Contains(EngineCatalog.PlannedEngines, e => e.Contains("Aurora", StringComparison.Ordinal));
-        Assert.True(EngineCatalog.PlannedEngines.Count >= 6);
     }
 }

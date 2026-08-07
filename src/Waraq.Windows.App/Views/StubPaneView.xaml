@@ -1,0 +1,60 @@
+<UserControl
+    x:Class="Waraq.Windows.App.Views.StubPaneView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer Padding="28,24">
+        <StackPanel MaxWidth="720">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="TitleText"
+                           Grid.Column="0"
+                           Style="{StaticResource WaraqPaneTitleTextStyle}"/>
+                <Border x:Name="AdvancedPill"
+                        Grid.Column="1"
+                        Visibility="Collapsed"
+                        Background="{ThemeResource AccentFillColorDefaultBrush}"
+                        Opacity="0.18"
+                        CornerRadius="{StaticResource WaraqRadiusChip}"
+                        Padding="8,3"
+                        VerticalAlignment="Center">
+                    <TextBlock Text="ADVANCED"
+                               FontSize="10"
+                               FontWeight="SemiBold"
+                               CharacterSpacing="40"
+                               Foreground="{StaticResource WaraqInfoAccentBrush}"/>
+                </Border>
+            </Grid>
+
+            <TextBlock Style="{StaticResource WaraqSectionHeaderTextStyle}" Text="STATUS"/>
+            <Border Style="{StaticResource WaraqCardBorderStyle}" Margin="0,0,0,8">
+                <StackPanel>
+                    <TextBlock x:Name="SummaryText" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                    <TextBlock x:Name="MacRefText"
+                               Opacity="0.7"
+                               FontSize="12"
+                               TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Style="{StaticResource WaraqSectionHeaderTextStyle}" Text="PLACEHOLDER CONTROLS"/>
+            <Border Style="{StaticResource WaraqCardBorderStyle}">
+                <StackPanel>
+                    <ToggleSwitch Header="Example toggle (stub)" IsEnabled="False" Margin="0,0,0,12"/>
+                    <ComboBox Header="Example popup (stub)"
+                              IsEnabled="False"
+                              PlaceholderText="Not wired yet"
+                              HorizontalAlignment="Stretch"
+                              Margin="0,0,0,12"/>
+                    <TextBlock Text="Full controls land in later phases. Layout follows DESIGN.md card pattern."
+                               Opacity="0.75"
+                               TextWrapping="Wrap"
+                               FontSize="12"/>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
