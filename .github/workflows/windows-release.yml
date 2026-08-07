@@ -101,9 +101,9 @@ jobs:
             SkipTests = $false
           }
           if ($gen) {
-            & pwsh -File windows/scripts/Build-Installer.ps1 -Version $version -GenerateCiCert
+            & pwsh -File archive/wrq-win-001/windows/scripts/Build-Installer.ps1 -Version $version -GenerateCiCert
           } else {
-            & pwsh -File windows/scripts/Build-Installer.ps1 -Version $version -PfxPath $pfx -PfxPassword $pass
+            & pwsh -File archive/wrq-win-001/windows/scripts/Build-Installer.ps1 -Version $version -PfxPath $pfx -PfxPassword $pass
           }
           if ($LASTEXITCODE -ne 0) { throw "Build-Installer.ps1 failed: $LASTEXITCODE" }
 
@@ -172,7 +172,7 @@ jobs:
           body: |
             ## Waraq for Windows — ${{ steps.meta.outputs.version }}
 
-            GPL-3.0 · [install guide](https://github.com/taroo0ooq/waraq-windows/blob/main/docs/install/WINDOWS.md)
+            GPL-3.0 · [install guide](https://github.com/taroo0ooq/waraq-archive/wrq-win-001/windows/blob/main/docs/install/WINDOWS.md)
 
             ### Recommended: Installer
             1. Download `Waraq.Windows-Setup-win-x64-*.exe`
@@ -208,7 +208,7 @@ jobs:
 
             Phase 6 installer draft (workflow_dispatch).
 
-            Install: [docs/install/WINDOWS.md](https://github.com/taroo0ooq/waraq-windows/blob/main/docs/install/WINDOWS.md)
+            Install: [docs/install/WINDOWS.md](https://github.com/taroo0ooq/waraq-archive/wrq-win-001/windows/blob/main/docs/install/WINDOWS.md)
           files: |
             artifacts/${{ steps.meta.outputs.artifact_name }}.zip
             artifacts/SHA256SUMS-portable.txt

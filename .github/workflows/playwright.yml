@@ -8,13 +8,13 @@ on:
   push:
     branches: [main]
     paths:
-      - "windows/**"
+      - "archive/wrq-win-001/windows/**"
       - "e2e/**"
       - ".github/workflows/playwright.yml"
   pull_request:
     branches: [main]
     paths:
-      - "windows/**"
+      - "archive/wrq-win-001/windows/**"
       - "e2e/**"
       - ".github/workflows/playwright.yml"
   workflow_dispatch:
@@ -57,7 +57,7 @@ jobs:
           name: windows-qa-smoke-results
           path: |
             e2e/out/**
-            windows/**/TestResults/**
+            archive/wrq-win-001/windows/**/TestResults/**
           if-no-files-found: ignore
 
   browser-playwright-na:

@@ -10,7 +10,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
-$WindowsDir = Join-Path $RepoRoot 'windows'
+$WindowsDir = Join-Path $RepoRoot 'archive/wrq-win-001/windows'
 $OutDir = Join-Path $RepoRoot 'e2e/out'
 $FixtureDir = Join-Path $RepoRoot 'e2e/fixtures'
 $Solution = Join-Path $WindowsDir 'WaraqWindows.sln'
@@ -130,7 +130,7 @@ $summary = @"
 ## Evidence
 
 - Log: e2e/out/smoke-log.txt
-- TRX under windows/**/TestResults/
+- TRX under archive/wrq-win-001/windows/**/TestResults/
 "@
 
 Set-Content -Path $summaryPath -Value $summary -Encoding UTF8

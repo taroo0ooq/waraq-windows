@@ -11,7 +11,7 @@ $Root = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 Set-Location $Root
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    $csproj = Join-Path $Root "windows\Waraq.Windows\Waraq.Windows.csproj"
+    $csproj = Join-Path $Root "archive\wrq-win-001\windows\Waraq.Windows\Waraq.Windows.csproj"
     [xml]$xml = Get-Content $csproj
     $Version = $xml.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
     if (-not $Version) { $Version = "0.0.0-local" }
@@ -34,7 +34,7 @@ New-Item -ItemType Directory -Force -Path $PublishDir | Out-Null
 if (Test-Path $StageDir) { Remove-Item -Recurse -Force $StageDir }
 New-Item -ItemType Directory -Force -Path $StageDir | Out-Null
 
-Push-Location (Join-Path $Root "windows")
+Push-Location (Join-Path $Root "archive\wrq-win-001\windows")
 try {
     dotnet restore WaraqWindows.sln
     if ($LASTEXITCODE -ne 0) { throw "restore failed" }

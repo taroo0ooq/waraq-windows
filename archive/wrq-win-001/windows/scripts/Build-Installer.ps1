@@ -45,7 +45,7 @@ function Find-SignTool {
 }
 
 if ([string]::IsNullOrWhiteSpace($Version)) {
-    $csproj = Join-Path $Root "windows\Waraq.Windows\Waraq.Windows.csproj"
+    $csproj = Join-Path $Root "archive\wrq-win-001\windows\Waraq.Windows\Waraq.Windows.csproj"
     [xml]$xml = Get-Content $csproj
     $Version = @($xml.Project.PropertyGroup.Version | Where-Object { $_ }) | Select-Object -First 1
     if (-not $Version) { $Version = "0.2.0-alpha" }
@@ -60,7 +60,7 @@ New-Item -ItemType Directory -Force -Path $PublishDir, $InstallerDir, $CertDir |
 Write-Host "==> Version: $Version"
 Write-Host "==> Publish: $PublishDir"
 
-Push-Location (Join-Path $Root "windows")
+Push-Location (Join-Path $Root "archive\wrq-win-001\windows")
 try {
     dotnet restore WaraqWindows.sln
     if ($LASTEXITCODE -ne 0) { throw "restore failed" }
@@ -150,7 +150,7 @@ $iscc = Find-ISCC
 if (-not $iscc) { throw "Inno Setup 6 ISCC.exe not found. Install from https://jrsoftware.org/isinfo.php" }
 
 $outputBase = "Waraq.Windows-Setup-win-x64-$SafeVersion"
-$iss = Join-Path $Root "installer\waraq-windows.iss"
+$iss = Join-Path $Root "archive\wrq-win-001\installer\waraq-windows.iss"
 Write-Host "==> Compile installer with $iscc"
 & $iscc `
     "/DMyAppVersion=$SafeVersion" `
