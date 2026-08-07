@@ -1,0 +1,65 @@
+<UserControl
+    x:Class="Waraq.Windows.App.Views.GalleryPaneView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer Padding="28,24">
+        <StackPanel MaxWidth="760" Spacing="0">
+            <TextBlock Style="{StaticResource WaraqPaneTitleTextStyle}" Text="Gallery"/>
+            <TextBlock TextWrapping="Wrap" Opacity="0.8" FontSize="12" Margin="0,0,0,12"
+                       Text="Network is used only when you press Search. No telemetry. Browse Web opens your default browser only — Waraq never scrapes those sites."/>
+
+            <TextBlock Style="{StaticResource WaraqSectionHeaderTextStyle}" Text="SOURCE"/>
+            <ComboBox x:Name="SourceBox" SelectionChanged="OnSourceChanged" Margin="0,0,0,8"/>
+
+            <StackPanel x:Name="KeyPanel" Spacing="6" Margin="0,0,0,12">
+                <TextBox x:Name="KeyBox" Header="API key (stored locally in AppData\Waraq)" PlaceholderText="Paste key — never leaves this PC except to the API host"/>
+                <Button Content="Save key" Click="OnSaveKey" HorizontalAlignment="Left"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+                <TextBox x:Name="QueryBox" Width="320" PlaceholderText="Search query" />
+                <Button x:Name="SearchButton" Content="Search" Click="OnSearchClick"/>
+            </StackPanel>
+
+            <ListView x:Name="ResultsList" MinHeight="180" MaxHeight="240" SelectionMode="Single">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Padding="0,4">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                            <TextBlock Text="{Binding Subtitle}" FontSize="12" Opacity="0.7"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,8,0,0">
+                <Button Content="Import selected to Library" Click="OnImportClick"/>
+                <Button Content="Open item page" Click="OnOpenItemPage"/>
+            </StackPanel>
+
+            <TextBlock Style="{StaticResource WaraqSectionHeaderTextStyle}" Text="BROWSE WEB"/>
+            <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.75" Margin="0,0,0,8"
+                       Text="External sites open in your browser. Downloads stay between you and the site."/>
+            <ItemsControl x:Name="BrowseList">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding Description}" FontSize="12" Opacity="0.7" TextWrapping="Wrap"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Open" Click="OnBrowseOpen" Tag="{Binding WebsiteUrl}" Margin="8,0,0,0"/>
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <TextBlock x:Name="StatusText" Margin="0,12,0,0" FontSize="12" Opacity="0.85" TextWrapping="Wrap"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
