@@ -22,6 +22,8 @@ public sealed class ApiKeyStore
         Reload();
     }
 
+    public string StorePath => _path;
+
     public void Reload()
     {
         lock (_gate)
@@ -90,7 +92,36 @@ public sealed class ApiKeyStore
         var json = JsonSerializer.Serialize(_map, new JsonSerializerOptions { WriteIndented = true });
         var tmp = _path + ".tmp";
         File.WriteAllText(tmp, json);
+
+        // Clear Hidden before replace — otherwise File.Copy can throw UnauthorizedAccessException.
+        try
+        {
+            if (File.Exists(_path))
+            {
+                var existing = File.GetAttributes(_path);
+                if ((existing & FileAttributes.Hidden) != 0)
+                {
+                    File.SetAttributes(_path, existing & ~FileAttributes.Hidden);
+                }
+            }
+        }
+        catch
+        {
+            // non-fatal
+        }
+
         File.Copy(tmp, _path, overwrite: true);
         File.Delete(tmp);
+
+        // Best-effort: mark keys file as user-hidden (does not encrypt; residual risk documented).
+        try
+        {
+            var attrs = File.GetAttributes(_path);
+            File.SetAttributes(_path, attrs | FileAttributes.Hidden);
+        }
+        catch
+        {
+            // non-fatal
+        }
     }
 }

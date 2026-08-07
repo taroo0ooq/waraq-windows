@@ -127,6 +127,24 @@ public class GalleryPrivacyTests
         Assert.Equal("Seeing%20Earth%20as%20Only%20NASA%20Can", pathId);
     }
 
+    [Theory]
+    [InlineData("http://example.com/a.mp4")]
+    [InlineData("file:///c:/temp/a.mp4")]
+    [InlineData("https://127.0.0.1/a.mp4")]
+    [InlineData("https://192.168.1.10/a.mp4")]
+    [InlineData("https://localhost/a.mp4")]
+    public void GalleryUrlPolicy_RejectsUnsafe(string url)
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            GalleryUrlPolicy.EnsureSafeHttpsUrl(url, "test"));
+    }
+
+    [Fact]
+    public void GalleryUrlPolicy_AllowsPublicHttps()
+    {
+        GalleryUrlPolicy.EnsureSafeHttpsUrl("https://cdn.example.com/video.mp4", "test");
+    }
+
     private sealed class StubHandler : HttpMessageHandler
     {
         private readonly Func<HttpRequestMessage, HttpResponseMessage> _impl;

@@ -98,7 +98,7 @@ public sealed partial class GalleryPaneView : UserControl
 
         try
         {
-            StatusText.Text = "Downloading to temp (user-initiated)…";
+            StatusText.Text = "Downloading to temp (user-initiated, https-only)…";
             var path = await DownloadToTempAsync(row.Item).ConfigureAwait(true);
             var entry = AppServices.LibraryStore.Import(path);
             try { File.Delete(path); } catch { /* ok */ }
@@ -148,8 +148,9 @@ public sealed partial class GalleryPaneView : UserControl
 
     private static async Task<string> DownloadToTempAsync(GalleryItem item)
     {
+        GalleryUrlPolicy.EnsureSafeHttpsUrl(item.DownloadUrl, "Gallery import");
+
         using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
-        var bytes = await http.GetByteArrayAsync(item.DownloadUrl).ConfigureAwait(false);
         var ext = ".mp4";
         if (item.DownloadUrl.Contains(".webm", StringComparison.OrdinalIgnoreCase))
         {
@@ -157,8 +158,16 @@ public sealed partial class GalleryPaneView : UserControl
         }
 
         var path = Path.Combine(Path.GetTempPath(), "waraq-gallery-" + Guid.NewGuid().ToString("N") + ext);
-        await File.WriteAllBytesAsync(path, bytes).ConfigureAwait(false);
-        return path;
+        try
+        {
+            await GalleryUrlPolicy.DownloadToFileAsync(http, item.DownloadUrl, path).ConfigureAwait(false);
+            return path;
+        }
+        catch
+        {
+            try { File.Delete(path); } catch { /* ok */ }
+            throw;
+        }
     }
 
     private sealed class ResultRow
