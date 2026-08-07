@@ -3,8 +3,11 @@
 
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Windows.Storage.Pickers;
+using WinRT.Interop;
 using Waraq.Windows.App.Tray;
 using Waraq.Windows.App.Views;
+using Waraq.Windows.Engines;
 using Waraq.Windows.Shell;
 
 namespace Waraq.Windows.App;
@@ -19,18 +22,18 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         Title = _vm.WindowTitle;
-
         AppWindow.Resize(new global::Windows.Graphics.SizeInt32(720, 560));
 
-        FooterStatus.Text = _vm.ProductLine + " · Phase 2 design shell stubs · owner visual accept later";
+        FooterStatus.Text = _vm.ProductLine + " · Phase 3 host: Apply/Stop local video or GIF";
         RebuildNav();
         _navReady = true;
-        SelectPane(SettingsPaneId.General);
+        SelectPane(SettingsPaneId.Wallpapers);
 
         Closed += (_, _) =>
         {
             _tray?.Dispose();
             _tray = null;
+            App.ShutdownWallpaper();
         };
 
         try
@@ -70,7 +73,7 @@ public sealed partial class MainWindow : Window
 
         _vm.IsAdvancedMode = AdvancedToggle.IsOn;
         var current = ParsePaneTag((NavView.SelectedItem as NavigationViewItem)?.Tag)
-                      ?? SettingsPaneId.General;
+                      ?? SettingsPaneId.Wallpapers;
         RebuildNav();
         if (!_vm.IsAdvancedMode && current == SettingsPaneId.Diagnostics)
         {
@@ -108,9 +111,65 @@ public sealed partial class MainWindow : Window
     private void ShowPane(SettingsPaneId id)
     {
         var desc = SettingsNavCatalog.All.First(p => p.Id == id);
+        if (id is SettingsPaneId.Wallpapers or SettingsPaneId.Library)
+        {
+            var playback = new PlaybackPaneView();
+            playback.Bind(desc, _vm.IsAdvancedMode, ApplyWallpaperAsync, StopWallpaper);
+            ContentFrame.Content = playback;
+            return;
+        }
+
         var view = new StubPaneView();
         view.Bind(desc, _vm.IsAdvancedMode);
         ContentFrame.Content = view;
+    }
+
+    private async Task ApplyWallpaperAsync()
+    {
+        var hwnd = WindowNative.GetWindowHandle(this);
+        var picker = new FileOpenPicker();
+        InitializeWithWindow.Initialize(picker, hwnd);
+        picker.ViewMode = PickerViewMode.Thumbnail;
+        picker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
+        picker.FileTypeFilter.Add(".mp4");
+        picker.FileTypeFilter.Add(".webm");
+        picker.FileTypeFilter.Add(".mkv");
+        picker.FileTypeFilter.Add(".mov");
+        picker.FileTypeFilter.Add(".m4v");
+        picker.FileTypeFilter.Add(".avi");
+        picker.FileTypeFilter.Add(".wmv");
+        picker.FileTypeFilter.Add(".gif");
+
+        var file = await picker.PickSingleFileAsync();
+        if (file is null)
+        {
+            FooterStatus.Text = "Apply cancelled.";
+            return;
+        }
+
+        try
+        {
+            await App.Wallpaper.ApplyAsync(file.Path, WallpaperFitMode.Fill);
+            FooterStatus.Text =
+                $"Applied ({App.Wallpaper.ActiveKind}): {App.Wallpaper.ActivePath} · Stop to clear · exit also stops";
+        }
+        catch (Exception ex)
+        {
+            FooterStatus.Text = $"Apply failed: {ex.Message}";
+        }
+    }
+
+    private void StopWallpaper()
+    {
+        try
+        {
+            App.Wallpaper.Stop();
+            FooterStatus.Text = "Wallpaper stopped.";
+        }
+        catch (Exception ex)
+        {
+            FooterStatus.Text = $"Stop failed: {ex.Message}";
+        }
     }
 
     private static SettingsPaneId? ParsePaneTag(object? tag)

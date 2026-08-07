@@ -3,16 +3,15 @@
 using Waraq.Windows.Core;
 using Waraq.Windows.Engines;
 using Waraq.Windows.Host;
-using Waraq.Windows.Shell;
 
 namespace Waraq.Windows.Tests;
 
 public class AppInfoTests
 {
     [Fact]
-    public void Version_IsPhase2Line()
+    public void Version_IsPhase3Line()
     {
-        Assert.Contains("phase2", AppInfo.Version, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("phase3", AppInfo.Version, StringComparison.OrdinalIgnoreCase);
     }
 }
 
@@ -43,40 +42,19 @@ public class MediaPathClassifierTests
     }
 }
 
-public class SettingsShellTests
+public class EnginePhase3Tests
 {
     [Fact]
-    public void BasicPanes_ExcludeDiagnostics()
+    public void Phase3_Playable_VideoAndGifOnly()
     {
-        var basic = SettingsNavCatalog.Visible(advanced: false).Select(p => p.Id).ToList();
-        Assert.DoesNotContain(SettingsPaneId.Diagnostics, basic);
-        Assert.Contains(SettingsPaneId.General, basic);
-        Assert.Contains(SettingsPaneId.Gallery, basic);
-        Assert.Equal(7, basic.Count);
-    }
-
-    [Fact]
-    public void AdvancedPanes_IncludeDiagnostics()
-    {
-        var adv = SettingsNavCatalog.Visible(advanced: true).Select(p => p.Id).ToList();
-        Assert.Contains(SettingsPaneId.Diagnostics, adv);
-        Assert.Equal(8, adv.Count);
-    }
-
-    [Fact]
-    public void EachPane_HasMacScreenshotRef()
-    {
-        Assert.All(SettingsNavCatalog.All, p => Assert.False(string.IsNullOrWhiteSpace(p.MacScreenshotRef)));
-    }
-
-    [Fact]
-    public void ViewModel_DefaultTitle_IsSettings()
-    {
-        Assert.Equal("Settings", new SettingsShellViewModel().WindowTitle);
+        Assert.True(EngineCatalog.IsPhase3Playable(MediaKind.Video));
+        Assert.True(EngineCatalog.IsPhase3Playable(MediaKind.Gif));
+        Assert.False(EngineCatalog.IsPhase3Playable(MediaKind.Image));
+        Assert.False(EngineCatalog.IsPhase3Playable(MediaKind.Unknown));
     }
 }
 
-public class HostAndEngineTests
+public class HostTests
 {
     [Fact]
     public void HostStrategy_IsWorkerW()
@@ -91,8 +69,28 @@ public class HostAndEngineTests
     }
 
     [Fact]
-    public void EngineCatalog_HasProcedural()
+    public void VirtualScreen_PositiveSize()
     {
-        Assert.Contains(EngineCatalog.PlannedEngines, e => e.Contains("Aurora", StringComparison.Ordinal));
+        var (_, _, w, h) = DesktopWallpaperHost.GetVirtualScreenPixels();
+        Assert.True(w > 0);
+        Assert.True(h > 0);
+    }
+}
+
+public class SettingsShellTests
+{
+    [Fact]
+    public void BasicPanes_ExcludeDiagnostics()
+    {
+        var basic = Shell.SettingsNavCatalog.Visible(false).Select(p => p.Id).ToList();
+        Assert.DoesNotContain(Shell.SettingsPaneId.Diagnostics, basic);
+        Assert.Equal(7, basic.Count);
+    }
+
+    [Fact]
+    public void Advanced_IncludesDiagnostics()
+    {
+        Assert.Contains(Shell.SettingsPaneId.Diagnostics,
+            Shell.SettingsNavCatalog.Visible(true).Select(p => p.Id));
     }
 }

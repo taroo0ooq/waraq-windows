@@ -1,0 +1,31 @@
+<UserControl
+    x:Class="Waraq.Windows.App.Views.PlaybackPaneView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer Padding="28,24">
+        <StackPanel MaxWidth="720">
+            <TextBlock x:Name="TitleText" Style="{StaticResource WaraqPaneTitleTextStyle}"/>
+
+            <TextBlock Style="{StaticResource WaraqSectionHeaderTextStyle}" Text="LIVE WALLPAPER (PHASE 3)"/>
+            <Border Style="{StaticResource WaraqCardBorderStyle}" Margin="0,0,0,12">
+                <StackPanel>
+                    <TextBlock x:Name="SummaryText" TextWrapping="Wrap" Margin="0,0,0,8"/>
+                    <TextBlock Text="Pick a local video or GIF. WorkerW host attaches behind desktop icons. UNC/URL paths are rejected."
+                               Opacity="0.75" FontSize="12" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                    <StackPanel Orientation="Horizontal" Spacing="8">
+                        <Button x:Name="ApplyButton" Content="Apply wallpaper" Click="OnApplyClick"/>
+                        <Button x:Name="StopButton" Content="Stop" Click="OnStopClick"/>
+                    </StackPanel>
+                    <TextBlock x:Name="StatusText" Margin="0,12,0,0" TextWrapping="Wrap" FontSize="12" Opacity="0.85"/>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Style="{StaticResource WaraqSectionHeaderTextStyle}" Text="CODECS / LIMITS"/>
+            <Border Style="{StaticResource WaraqCardBorderStyle}">
+                <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8"
+                           Text="Video: Media Foundation / MediaPlayer (loop, muted). GIF: BitmapImage. Fit: Fill (cover). Multi-monitor: one virtual-desktop surface. Pause-on-battery/fullscreen deferred."/>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

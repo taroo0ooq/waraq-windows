@@ -1,10 +1,16 @@
 // Waraq for Windows — GPL-3.0 derivative of bahamut42/waraq.
 // Copyright (C) Waraq authors and Waraq Windows contributors.
-// Phase 1: engine contracts only. Implementations in Phase 3–5.
 
 using Waraq.Windows.Core;
 
 namespace Waraq.Windows.Engines;
+
+public enum WallpaperFitMode
+{
+    Fill = 0,
+    Stretch = 1,
+    Fit = 2,
+}
 
 public interface IWallpaperEngine
 {
@@ -12,7 +18,6 @@ public interface IWallpaperEngine
     string DisplayName { get; }
 }
 
-/// <summary>Placeholder registry — Phase 3+ registers real engines.</summary>
 public static class EngineCatalog
 {
     public static IReadOnlyList<string> PlannedEngines { get; } =
@@ -27,4 +32,8 @@ public static class EngineCatalog
         "Procedural.NeuralNetwork",
         "Procedural.AnimatedGradient",
     ];
+
+    /// <summary>Phase 3 MVP supported kinds.</summary>
+    public static bool IsPhase3Playable(MediaKind kind) =>
+        kind is MediaKind.Video or MediaKind.Gif;
 }
