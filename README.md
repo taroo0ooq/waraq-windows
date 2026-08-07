@@ -1,8 +1,9 @@
 > **Windows port workspace (taroo0ooq/waraq-windows)**  
-> This repository is a **GPL-3.0 derivative** of [bahamut42/waraq](https://github.com/bahamut42/waraq) (macOS live wallpapers).  
-> Goal: develop a **Windows** version. Upstream macOS Swift/AppKit tree is kept at repo root for provenance and reference.  
-> License: **GNU GPL v3** — stays free/open; see `LICENSE` and `NOTICE`.  
-> Status: **Phase 6 Installer** — Setup.exe (Inno) + self-signed Authenticode + bundled .NET runtime. Install: [docs/install/WINDOWS.md](docs/install/WINDOWS.md). Market held until installer path complete.
+> GPL-3.0 derivative of [bahamut42/waraq](https://github.com/bahamut42/waraq).  
+> **WRQ-WIN-001 MVP superseded** (archived under `archive/wrq-win-001/`, tag `archive/wrq-win-001-final`).  
+> Active program: **WRQ-WIN-002** — rebuild for **macOS v1.0.0 look & feel + feature parity**.  
+> License: GNU GPL v3 — see `LICENSE` and `NOTICE`.
+
 
 ---
 
