@@ -2,12 +2,16 @@
 // Copyright (C) Waraq authors and Waraq Windows contributors.
 
 using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 using Waraq.Windows.App.Tray;
 using Waraq.Windows.App.Views;
+using Waraq.Windows.Core;
 using Waraq.Windows.Engines;
+using Waraq.Windows.Host;
 using Waraq.Windows.Shell;
 
 namespace Waraq.Windows.App;
@@ -21,13 +25,33 @@ public sealed partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        Title = _vm.WindowTitle;
-        AppWindow.Resize(new global::Windows.Graphics.SizeInt32(780, 600));
+        Title = "Waraq Settings";
+        ExtendsContentIntoTitleBar = false;
 
-        FooterStatus.Text = _vm.ProductLine + " · Phase 7 governor";
+        try
+        {
+            SystemBackdrop = new MicaBackdrop();
+        }
+        catch
+        {
+            // Mica optional on older builds
+        }
+
+        AppWindow.Resize(new global::Windows.Graphics.SizeInt32(760, 580));
+        try
+        {
+            AppWindow.SetIcon("Assets/AppIcon.ico");
+        }
+        catch
+        {
+            // icon optional
+        }
+
+        FooterStatus.Text = _vm.ProductLine + " · Phase 8 L&F";
+        UpdateDpiBadge();
         RebuildNav();
         _navReady = true;
-        SelectPane(SettingsPaneId.Performance);
+        SelectPane(SettingsPaneId.General);
 
         Closed += (_, _) =>
         {
@@ -44,6 +68,25 @@ public sealed partial class MainWindow : Window
         {
             FooterStatus.Text += $" · tray unavailable: {ex.Message}";
         }
+
+        // Refresh DPI badge when moved across monitors
+        AppWindow.Changed += (_, _) => UpdateDpiBadge();
+    }
+
+    private void UpdateDpiBadge()
+    {
+        try
+        {
+            var hwnd = WindowNative.GetWindowHandle(this);
+            var dpi = DpiProbe.GetDpiForWindow(hwnd);
+            var scale = dpi / 96.0;
+            DpiBadgeText.Text = $"DPI {dpi} · {scale:0.##}x · PerMonitorV2";
+            AutomationProperties.SetName(DpiBadge, $"Display scale {scale:0.##} times, DPI {dpi}");
+        }
+        catch
+        {
+            DpiBadgeText.Text = "DPI · PerMonitorV2";
+        }
     }
 
     private void RebuildNav()
@@ -51,16 +94,20 @@ public sealed partial class MainWindow : Window
         NavView.MenuItems.Clear();
         foreach (var pane in _vm.VisiblePanes)
         {
-            NavView.MenuItems.Add(new NavigationViewItem
+            var item = new NavigationViewItem
             {
                 Content = pane.Title,
                 Tag = pane.Id.ToString(),
+                AccessKey = pane.Title.Length > 0 ? pane.Title[..1] : "S",
                 Icon = new FontIcon
                 {
                     Glyph = pane.Glyph,
-                    FontFamily = new Microsoft.UI.Xaml.Media.FontFamily("Segoe Fluent Icons"),
+                    FontFamily = new FontFamily("Segoe Fluent Icons"),
                 },
-            });
+            };
+            AutomationProperties.SetName(item, pane.Title + " settings");
+            AutomationProperties.SetHelpText(item, pane.StubSummary);
+            NavView.MenuItems.Add(item);
         }
     }
 
