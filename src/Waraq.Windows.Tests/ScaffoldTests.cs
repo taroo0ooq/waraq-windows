@@ -28,6 +28,44 @@ public class LocalMediaPathGateTests
     {
         Assert.Equal(expected, LocalMediaPathGate.IsAllowed(path, out _));
     }
+
+    [Fact]
+    public void Normalize_RejectsHttp()
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            LocalMediaPathGate.NormalizeExistingLocalFile("https://example.com/a.mp4"));
+    }
+
+    [Fact]
+    public void Normalize_RejectsUnc()
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+            LocalMediaPathGate.NormalizeExistingLocalFile(@"\\server\share\a.mp4"));
+    }
+
+    [Fact]
+    public void Normalize_MissingLocal_ThrowsFileNotFound()
+    {
+        Assert.Throws<FileNotFoundException>(() =>
+            LocalMediaPathGate.NormalizeExistingLocalFile(@"C:\this\path\does\not\exist-waraq-002.mp4"));
+    }
+
+    [Fact]
+    public void Normalize_TempFile_Ok()
+    {
+        var tmp = Path.Combine(Path.GetTempPath(), $"waraq-002-{Guid.NewGuid():N}.gif");
+        File.WriteAllBytes(tmp, new byte[] { 0x47, 0x49, 0x46 });
+        try
+        {
+            var full = LocalMediaPathGate.NormalizeExistingLocalFile(tmp);
+            Assert.True(File.Exists(full));
+            LocalMediaPathGate.EnsureWithinSizeLimit(full, MediaKind.Gif);
+        }
+        finally
+        {
+            File.Delete(tmp);
+        }
+    }
 }
 
 public class MediaPathClassifierTests

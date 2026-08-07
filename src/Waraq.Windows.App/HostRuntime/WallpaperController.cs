@@ -39,23 +39,16 @@ public sealed class WallpaperController : IDisposable
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
 
-        if (!LocalMediaPathGate.IsAllowed(path, out var reason))
-        {
-            throw new InvalidOperationException($"Media path rejected: {reason}");
-        }
-
-        var full = Path.GetFullPath(path!);
-        if (!File.Exists(full))
-        {
-            throw new FileNotFoundException("Media file not found.", full);
-        }
-
+        // Secure path gate: local drive file only (no UNC/URL); size soft-caps.
+        var full = LocalMediaPathGate.NormalizeExistingLocalFile(path);
         var kind = MediaPathClassifier.Classify(full);
         if (!EngineCatalog.IsPhase3Playable(kind))
         {
             throw new NotSupportedException(
                 "Phase 3 supports local video (.mp4, .webm, .mkv, .avi, .mov, .wmv, .m4v) and .gif only.");
         }
+
+        LocalMediaPathGate.EnsureWithinSizeLimit(full, kind);
 
         StopInternal();
 
@@ -152,6 +145,7 @@ internal sealed class WallpaperSurfaceWindow : Window
                 VerticalAlignment = VerticalAlignment.Stretch,
             };
             var bitmap = new BitmapImage();
+            // path already validated as local drive file
             bitmap.UriSource = new Uri(path, UriKind.Absolute);
             _gifImage.Source = bitmap;
             root.Children.Add(_gifImage);
