@@ -1,10 +1,13 @@
 // Waraq for Windows — GPL-3.0 derivative of bahamut42/waraq.
-// WRQ-WIN-002 Phase 6 — Gallery privacy + clients tests.
+// WRQ-WIN-002 Phase 6-QA — Gallery privacy + URL policy matrix (Stagecraft QA).
 
 using System.Net;
 using System.Net.Http;
 using System.Text;
+using Waraq.Windows.Core;
 using Waraq.Windows.Core.Gallery;
+using Waraq.Windows.Engines.Procedural;
+using Waraq.Windows.Host;
 
 namespace Waraq.Windows.Tests;
 
@@ -48,6 +51,7 @@ public class GalleryPrivacyTests
     {
         Assert.Throws<ArgumentException>(() => BrowseWeb.Open("file:///c:/temp"));
         Assert.Throws<ArgumentException>(() => BrowseWeb.Open("not-a-url"));
+        Assert.Throws<ArgumentException>(() => BrowseWeb.Open("ftp://example.com"));
     }
 
     [Fact]
@@ -130,9 +134,17 @@ public class GalleryPrivacyTests
     [Theory]
     [InlineData("http://example.com/a.mp4")]
     [InlineData("file:///c:/temp/a.mp4")]
+    [InlineData("ftp://example.com/a.mp4")]
     [InlineData("https://127.0.0.1/a.mp4")]
     [InlineData("https://192.168.1.10/a.mp4")]
+    [InlineData("https://10.0.0.5/a.mp4")]
+    [InlineData("https://172.16.0.1/a.mp4")]
+    [InlineData("https://169.254.1.1/a.mp4")]
     [InlineData("https://localhost/a.mp4")]
+    [InlineData("https://foo.localhost/a.mp4")]
+    [InlineData("https://user:pass@cdn.example.com/a.mp4")]
+    [InlineData("")]
+    [InlineData("not-a-url")]
     public void GalleryUrlPolicy_RejectsUnsafe(string url)
     {
         Assert.Throws<InvalidOperationException>(() =>
@@ -143,6 +155,51 @@ public class GalleryPrivacyTests
     public void GalleryUrlPolicy_AllowsPublicHttps()
     {
         GalleryUrlPolicy.EnsureSafeHttpsUrl("https://cdn.example.com/video.mp4", "test");
+        GalleryUrlPolicy.EnsureSafeHttpsUrl("https://images-assets.nasa.gov/video/x/x~orig.mp4", "test");
+    }
+
+    [Fact]
+    public void GalleryUrlPolicy_MaxDownloadConstant_Is512MiB()
+    {
+        Assert.Equal(512L * 1024 * 1024, GalleryUrlPolicy.MaxDownloadBytes);
+    }
+
+    [Fact]
+    public void HostProbe_NoRegression_WithGalleryTypesLoaded()
+    {
+        _ = ExternalBrowseCatalog.All.Count;
+        _ = GalleryUrlPolicy.MaxDownloadBytes;
+        var probe = new DesktopWallpaperHost().Probe();
+        Assert.False(string.IsNullOrWhiteSpace(probe.Message));
+    }
+
+    [Fact]
+    public void ProceduralCatalog_NoRegression_StillSix()
+    {
+        Assert.Equal(6, ProceduralCatalog.All.Count);
+        Assert.Contains(ProceduralCatalog.All, d => d.Id == "aurora");
+    }
+
+    [Fact]
+    public void LibraryImport_NoRegression_WithGalleryPresent()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "waraq-g3-" + Guid.NewGuid().ToString("N"));
+        var paths = new LibraryPaths(root);
+        paths.EnsureDirectories();
+        try
+        {
+            var gif = Path.Combine(root, "s.gif");
+            File.WriteAllBytes(gif, Convert.FromBase64String(
+                "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"));
+            var store = new WallpaperLibraryStore(paths);
+            var entry = store.Import(gif);
+            Assert.Equal("Gif", entry.Kind);
+            Assert.True(File.Exists(store.ResolveAbsolute(entry.RelativePath)));
+        }
+        finally
+        {
+            try { Directory.Delete(root, true); } catch { /* ok */ }
+        }
     }
 
     private sealed class StubHandler : HttpMessageHandler
