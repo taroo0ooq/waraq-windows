@@ -1,7 +1,8 @@
 > **Windows port workspace (taroo0ooq/waraq-windows)**  
 > GPL-3.0 derivative of [bahamut42/waraq](https://github.com/bahamut42/waraq).  
 > **WRQ-WIN-001 MVP superseded** (archived under `archive/wrq-win-001/`, tag `archive/wrq-win-001-final`).  
-> Active program: **WRQ-WIN-002** — rebuild for **macOS v1.0.0 look & feel + feature parity**.  
+> Active program: **WRQ-WIN-002** — macOS v1.0.0 look & feel + feature parity.  
+> **Phase 1:** WinUI 3 scaffold under `src/` (empty shell). See [src/README.md](src/README.md).  
 > License: GNU GPL v3 — see `LICENSE` and `NOTICE`.
 
 

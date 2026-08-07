@@ -48,9 +48,10 @@ jobs:
           {
             echo "## DAST result: N/A (documented)"
             echo ""
-            echo "No HTTP/network listener is exposed by the Windows app (local WPF desktop)."
+            echo "No HTTP/network listener is exposed by the Windows app (local WinUI desktop)."
             echo "Dynamic application security testing is deferred until a network surface exists."
             echo "See \`docs/security/DAST.md\`."
             echo ""
-            echo "Workflow policy: no concurrency cancel group (Phase 6-fix) so required checks finish SUCCESS."
+            echo "Workflow policy: no concurrency cancel group so required checks finish SUCCESS."
+            echo "Product line: WRQ-WIN-002 (src/ WinUI scaffold)."
           } >> "$GITHUB_STEP_SUMMARY"

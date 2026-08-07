@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <Company>Waraq Windows contributors</Company>
+    <Authors>Waraq Windows contributors</Authors>
+    <Copyright>Copyright (C) Waraq authors and Waraq Windows contributors</Copyright>
+    <Version>0.1.0-phase1</Version>
+    <Product>Waraq for Windows</Product>
+    <Description>GPL-3.0 Windows live wallpapers — WRQ-WIN-002 parity rebuild</Description>
+  </PropertyGroup>
+</Project>
