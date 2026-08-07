@@ -112,10 +112,14 @@ public sealed partial class MainWindow : Window
     {
         var desc = SettingsNavCatalog.All.First(p => p.Id == id);
         if (id == SettingsPaneId.Library)
-        {
-            ContentFrame.Content = new LibraryPaneView(this, ApplyPathAsync, s => FooterStatus.Text = s);
-            return;
-        }
+                {
+                    ContentFrame.Content = new LibraryPaneView(
+                        this,
+                        ApplyPathAsync,
+                        ApplyProcedural,
+                        s => FooterStatus.Text = s);
+                    return;
+                }
 
         if (id == SettingsPaneId.Wallpapers)
         {
@@ -131,11 +135,18 @@ public sealed partial class MainWindow : Window
     }
 
     private async Task ApplyPathAsync(string path)
-    {
-        await App.Wallpaper.ApplyAsync(path, WallpaperFitMode.Fill);
-        FooterStatus.Text =
-            $"Applied ({App.Wallpaper.ActiveKind}): {App.Wallpaper.ActivePath}";
-    }
+        {
+            await App.Wallpaper.ApplyAsync(path, WallpaperFitMode.Fill);
+            FooterStatus.Text =
+                $"Applied ({App.Wallpaper.ActiveKind}): {App.Wallpaper.ActivePath}";
+        }
+
+        private void ApplyProcedural(string engineId)
+        {
+            App.Wallpaper.ApplyProcedural(engineId);
+            FooterStatus.Text =
+                $"Applied procedural ({App.Wallpaper.ActiveProceduralId}) via {App.Wallpaper.StrategyName}";
+        }
 
     private async Task ApplyWallpaperAsync()
     {

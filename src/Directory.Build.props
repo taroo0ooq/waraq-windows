@@ -6,7 +6,7 @@
     <Company>Waraq Windows contributors</Company>
     <Authors>Waraq Windows contributors</Authors>
     <Copyright>Copyright (C) Waraq authors and Waraq Windows contributors</Copyright>
-    <Version>0.4.0-phase4</Version>
+    <Version>0.5.0-phase5</Version>
     <Product>Waraq for Windows</Product>
     <Description>GPL-3.0 Windows live wallpapers — WRQ-WIN-002 parity rebuild</Description>
   </PropertyGroup>

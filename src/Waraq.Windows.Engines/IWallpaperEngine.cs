@@ -2,6 +2,7 @@
 // Copyright (C) Waraq authors and Waraq Windows contributors.
 
 using Waraq.Windows.Core;
+using Waraq.Windows.Engines.Procedural;
 
 namespace Waraq.Windows.Engines;
 
@@ -33,7 +34,8 @@ public static class EngineCatalog
         "Procedural.AnimatedGradient",
     ];
 
-    /// <summary>Phase 3 MVP supported kinds.</summary>
     public static bool IsPhase3Playable(MediaKind kind) =>
         kind is MediaKind.Video or MediaKind.Gif;
+
+    public static IReadOnlyList<ProceduralDescriptor> ProceduralEngines => ProceduralCatalog.All;
 }

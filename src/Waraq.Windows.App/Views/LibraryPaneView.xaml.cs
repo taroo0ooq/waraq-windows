@@ -3,11 +3,12 @@
 
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Windows.Storage.Pickers;
 using WinRT.Interop;
 using Waraq.Windows.App.Library;
 using Waraq.Windows.Core;
-using Waraq.Windows.Engines;
+using Waraq.Windows.Engines.Procedural;
 
 namespace Waraq.Windows.App.Views;
 
@@ -15,14 +16,21 @@ public sealed partial class LibraryPaneView : UserControl
 {
     private readonly Window _owner;
     private readonly Func<string, Task> _applyPathAsync;
+    private readonly Action<string> _applyProcedural;
     private readonly Action<string> _status;
 
-    public LibraryPaneView(Window owner, Func<string, Task> applyPathAsync, Action<string> status)
+    public LibraryPaneView(
+        Window owner,
+        Func<string, Task> applyPathAsync,
+        Action<string> applyProcedural,
+        Action<string> status)
     {
         _owner = owner;
         _applyPathAsync = applyPathAsync;
+        _applyProcedural = applyProcedural;
         _status = status;
         InitializeComponent();
+        ProceduralList.ItemsSource = ProceduralCatalog.All.ToList();
         Reload();
     }
 
@@ -32,7 +40,7 @@ public sealed partial class LibraryPaneView : UserControl
         var rows = AppServices.LibraryStore.Items.Select(e => new LibraryRow(e)).ToList();
         ItemsList.ItemsSource = rows;
         StatusText.Text =
-            $"{rows.Count} item(s) · store {AppServices.LibraryPaths.Root} · profiles {AppServices.ProfileStore.Profiles.Count}";
+            $"{rows.Count} media · {ProceduralCatalog.All.Count} procedural · {AppServices.LibraryPaths.Root}";
     }
 
     private async void OnImportClick(object sender, RoutedEventArgs e)
@@ -59,7 +67,6 @@ public sealed partial class LibraryPaneView : UserControl
                 file.Path,
                 (media, id) => ThumbnailFactory.TryCreate(AppServices.LibraryPaths, media, id));
 
-            // Persist profile against primary display key
             var displays = AppServices.RefreshDisplays();
             var primary = displays.FirstOrDefault();
             if (!string.IsNullOrEmpty(primary.Key))
@@ -96,7 +103,7 @@ public sealed partial class LibraryPaneView : UserControl
             }
 
             Reload();
-            _status($"Applied {row.DisplayName} · profiles updated for {displays.Count} display(s)");
+            _status($"Applied {row.DisplayName}");
         }
         catch (Exception ex)
         {
@@ -120,6 +127,38 @@ public sealed partial class LibraryPaneView : UserControl
     }
 
     private void OnRefreshClick(object sender, RoutedEventArgs e) => Reload();
+
+    private void OnProceduralApplyClick(object sender, RoutedEventArgs e)
+    {
+        if (sender is Button { Tag: string id })
+        {
+            try
+            {
+                _applyProcedural(id);
+                _status($"Applied procedural: {id}");
+            }
+            catch (Exception ex)
+            {
+                _status($"Procedural apply failed: {ex.Message}");
+            }
+        }
+    }
+
+    private void OnProceduralDoubleTapped(object sender, DoubleTappedRoutedEventArgs e)
+    {
+        if (ProceduralList.SelectedItem is ProceduralDescriptor d)
+        {
+            try
+            {
+                _applyProcedural(d.Id);
+                _status($"Applied procedural: {d.DisplayName}");
+            }
+            catch (Exception ex)
+            {
+                _status($"Procedural apply failed: {ex.Message}");
+            }
+        }
+    }
 
     private sealed class LibraryRow
     {
