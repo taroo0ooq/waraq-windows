@@ -1,6 +1,6 @@
 // Waraq for Windows — GPL-3.0 derivative of bahamut42/waraq.
 // Copyright (C) Waraq authors and Waraq Windows contributors.
-// Phase 1: compile-only host surface. Live WorkerW attach is Phase 3.
+// Phase 3: WorkerW attach + probe (rewrite from archive lessons).
 
 using System.Runtime.InteropServices;
 using System.Text;
@@ -10,6 +10,20 @@ namespace Waraq.Windows.Host;
 internal static class NativeMethods
 {
     public const uint WM_SPAWN_WORKER = 0x052C;
+    public const uint SMTO_NORMAL = 0x0000;
+    public const int GWL_EXSTYLE = -20;
+    public const int WS_EX_TOOLWINDOW = 0x00000080;
+    public const int WS_EX_NOACTIVATE = 0x08000000;
+    public const int WS_EX_NOINHERITLAYOUT = 0x00100000;
+    public const uint SWP_NOACTIVATE = 0x0010;
+    public const uint SWP_SHOWWINDOW = 0x0040;
+    public const uint SWP_FRAMECHANGED = 0x0020;
+    public const int SW_SHOWNOACTIVATE = 4;
+    public const int SM_XVIRTUALSCREEN = 76;
+    public const int SM_YVIRTUALSCREEN = 77;
+    public const int SM_CXVIRTUALSCREEN = 78;
+    public const int SM_CYVIRTUALSCREEN = 79;
+    public static readonly IntPtr HWND_BOTTOM = new(1);
 
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
@@ -30,13 +44,40 @@ internal static class NativeMethods
     [DllImport("user32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
 
-    public const uint SMTO_NORMAL = 0x0000;
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    public static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetWindowPos(
+        IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    [DllImport("user32.dll")]
+    public static extern int GetSystemMetrics(int nIndex);
+
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsWindow(IntPtr hWnd);
 }
 
-/// <summary>
-/// WorkerW discovery helpers (reference: archive/wrq-win-001 + ADR 0001/0003).
-/// Phase 1 does not SetParent wallpaper HWNDs.
-/// </summary>
+public readonly record struct WallpaperHostProbeResult(
+    bool FoundProgman,
+    bool FoundWorkerW,
+    IntPtr ProgmanHandle,
+    IntPtr WorkerWHandle,
+    string Message);
+
+/// <summary>WorkerW discovery + HWND parenting (ADR 0001/0003).</summary>
 public sealed class DesktopWallpaperHost
 {
     public string StrategyName => "WorkerW (Progman)";
@@ -50,10 +91,7 @@ public sealed class DesktopWallpaperHost
                 "Progman not found (Explorer shell missing?)");
         }
 
-        _ = NativeMethods.SendMessageTimeout(
-            progman, NativeMethods.WM_SPAWN_WORKER, new UIntPtr(0xD), new IntPtr(0x1),
-            NativeMethods.SMTO_NORMAL, 1000, out _);
-
+        EnsureWorkerWSpawned(progman);
         var worker = FindWallpaperWorkerW();
         return new WallpaperHostProbeResult(
             true,
@@ -61,12 +99,18 @@ public sealed class DesktopWallpaperHost
             progman,
             worker,
             worker != IntPtr.Zero
-                ? "Progman + WorkerW located (attach deferred to Phase 3)"
+                ? "Progman + WorkerW located"
                 : "Progman found; WorkerW not located on this shell layout");
     }
 
     public IntPtr FindWallpaperWorkerW()
     {
+        var progman = NativeMethods.FindWindow("Progman", null);
+        if (progman != IntPtr.Zero)
+        {
+            EnsureWorkerWSpawned(progman);
+        }
+
         IntPtr workerw = IntPtr.Zero;
         NativeMethods.EnumWindows((top, _) =>
         {
@@ -79,13 +123,90 @@ public sealed class DesktopWallpaperHost
 
             return true;
         }, IntPtr.Zero);
+
+        if (workerw != IntPtr.Zero)
+        {
+            return workerw;
+        }
+
+        // Fallback: first WorkerW without DefView
+        NativeMethods.EnumWindows((top, _) =>
+        {
+            var sb = new StringBuilder(256);
+            _ = NativeMethods.GetClassName(top, sb, sb.Capacity);
+            if (!string.Equals(sb.ToString(), "WorkerW", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            var shellView = NativeMethods.FindWindowEx(top, IntPtr.Zero, "SHELLDLL_DefView", null);
+            if (shellView == IntPtr.Zero)
+            {
+                workerw = top;
+                return false;
+            }
+
+            return true;
+        }, IntPtr.Zero);
+
         return workerw;
     }
-}
 
-public readonly record struct WallpaperHostProbeResult(
-    bool FoundProgman,
-    bool FoundWorkerW,
-    IntPtr ProgmanHandle,
-    IntPtr WorkerWHandle,
-    string Message);
+    /// <summary>Parent <paramref name="hwnd"/> under WorkerW and size in device pixels.</summary>
+    public void AttachHwnd(IntPtr hwnd, int xPx, int yPx, int widthPx, int heightPx)
+    {
+        if (hwnd == IntPtr.Zero)
+        {
+            throw new ArgumentException("Invalid HWND.", nameof(hwnd));
+        }
+
+        var workerW = FindWallpaperWorkerW();
+        if (workerW == IntPtr.Zero || !NativeMethods.IsWindow(workerW))
+        {
+            throw new InvalidOperationException(
+                "Could not locate desktop WorkerW. Is Explorer running?");
+        }
+
+        var ex = NativeMethods.GetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE);
+        ex |= NativeMethods.WS_EX_TOOLWINDOW | NativeMethods.WS_EX_NOACTIVATE | NativeMethods.WS_EX_NOINHERITLAYOUT;
+        _ = NativeMethods.SetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE, ex);
+
+        _ = NativeMethods.SetParent(hwnd, workerW);
+        _ = NativeMethods.SetWindowPos(
+            hwnd,
+            NativeMethods.HWND_BOTTOM,
+            xPx,
+            yPx,
+            Math.Max(1, widthPx),
+            Math.Max(1, heightPx),
+            NativeMethods.SWP_NOACTIVATE | NativeMethods.SWP_SHOWWINDOW | NativeMethods.SWP_FRAMECHANGED);
+        _ = NativeMethods.ShowWindow(hwnd, NativeMethods.SW_SHOWNOACTIVATE);
+    }
+
+    public static (int X, int Y, int Width, int Height) GetVirtualScreenPixels()
+    {
+        var x = NativeMethods.GetSystemMetrics(NativeMethods.SM_XVIRTUALSCREEN);
+        var y = NativeMethods.GetSystemMetrics(NativeMethods.SM_YVIRTUALSCREEN);
+        var w = NativeMethods.GetSystemMetrics(NativeMethods.SM_CXVIRTUALSCREEN);
+        var h = NativeMethods.GetSystemMetrics(NativeMethods.SM_CYVIRTUALSCREEN);
+        if (w <= 0 || h <= 0)
+        {
+            w = NativeMethods.GetSystemMetrics(0);
+            h = NativeMethods.GetSystemMetrics(1);
+            x = 0;
+            y = 0;
+        }
+
+        return (x, y, w, h);
+    }
+
+    private static void EnsureWorkerWSpawned(IntPtr progman)
+    {
+        _ = NativeMethods.SendMessageTimeout(
+            progman, NativeMethods.WM_SPAWN_WORKER, new UIntPtr(0xD), new IntPtr(0x1),
+            NativeMethods.SMTO_NORMAL, 1000, out _);
+        _ = NativeMethods.SendMessageTimeout(
+            progman, NativeMethods.WM_SPAWN_WORKER, UIntPtr.Zero, IntPtr.Zero,
+            NativeMethods.SMTO_NORMAL, 1000, out _);
+    }
+}

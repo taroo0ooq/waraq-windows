@@ -91,7 +91,7 @@ public sealed class TrayIconService : IDisposable
     {
         var menu = CreatePopupMenu();
         AppendMenu(menu, MF_STRING, new IntPtr(CMD_SETTINGS), "Open settings");
-        AppendMenu(menu, MF_STRING, new IntPtr(CMD_PAUSE), "Pause wallpaper (stub)");
+        AppendMenu(menu, MF_STRING, new IntPtr(CMD_PAUSE), "Stop wallpaper");
         AppendMenu(menu, MF_SEPARATOR, IntPtr.Zero, string.Empty);
         AppendMenu(menu, MF_STRING, new IntPtr(CMD_QUIT), "Quit");
 
@@ -106,10 +106,11 @@ public sealed class TrayIconService : IDisposable
                 ShowSettings();
                 break;
             case CMD_PAUSE:
-                // stub — balloon not implemented without more NOTIFYICONDATA flags
+                try { App.Wallpaper.Stop(); } catch { /* best-effort */ }
                 break;
             case CMD_QUIT:
                 Dispose();
+                App.ShutdownWallpaper();
                 Application.Current?.Exit();
                 break;
         }

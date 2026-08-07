@@ -6,14 +6,14 @@ namespace Waraq.Windows.Core;
 public static class AppInfo
 {
     public const string ProductName = "Waraq for Windows";
-    public const string Version = "0.2.0-phase2";
+    public const string Version = "0.3.0-phase3";
     public const string License = "GPL-3.0-or-later";
     public const string WorkId = "WRQ-WIN-002";
-    public const string Phase = "2 — design shell";
+    public const string Phase = "3 — host video/GIF";
 
     public static string PlaceholderTitle =>
-        $"{ProductName} — Phase 2 Settings shell";
+        $"{ProductName} — Phase 3 wallpaper host";
 
     public static string StatusLine =>
-        $"{ProductName} {Version} · {WorkId} · tray + NavigationView stubs";
+        $"{ProductName} {Version} · {WorkId} · WorkerW + video/GIF Apply/Stop";
 }
