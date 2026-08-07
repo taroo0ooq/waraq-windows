@@ -1,6 +1,5 @@
-# WRQ-WIN-001 Phase 5+6 — Windows release packaging + installer (Ship)
-# Zip (portable) + Inno Setup installer, self-signed Authenticode.
-# Triggers: tags win-v* | workflow_dispatch
+# WRQ-WIN-002 Phase 9 — Windows release packaging + installer (Ship)
+# Portable zip + Inno Setup for src/ WinUI 3 app, self-signed Authenticode.
 name: windows-release
 
 on:
@@ -14,7 +13,7 @@ on:
         type: boolean
         default: false
       version_suffix:
-        description: "Optional version label override (default: csproj version + run number)"
+        description: "Optional version label override (default: Directory.Build.props + run number)"
         type: string
         required: false
         default: ""
@@ -28,9 +27,9 @@ permissions:
 
 jobs:
   package:
-    name: Package zip + signed installer
+    name: Package zip + signed installer (src WinUI)
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
 
     outputs:
       version: ${{ steps.meta.outputs.version }}
@@ -56,7 +55,10 @@ jobs:
           } elseif ('${{ inputs.version_suffix }}') {
             $version = '${{ inputs.version_suffix }}'
           } else {
-            $version = "0.2.0-alpha+$env:GITHUB_RUN_NUMBER"
+            [xml]$xml = Get-Content src/Directory.Build.props
+            $base = @($xml.Project.PropertyGroup.Version | Where-Object { $_ }) | Select-Object -First 1
+            if (-not $base) { $base = "0.9.0-phase9" }
+            $version = "$base+$env:GITHUB_RUN_NUMBER"
           }
           $safe = ($version -replace '[\\/:\s\+]', '-')
           "version=$version" >> $env:GITHUB_OUTPUT
@@ -74,36 +76,23 @@ jobs:
           ) | Where-Object { Test-Path $_ } | Select-Object -First 1
           if (-not $iscc) { throw "ISCC.exe missing after choco install" }
           Write-Host "ISCC=$iscc"
-          & $iscc /? | Select-Object -First 3
 
-      - name: Build installer (publish + self-sign + Inno)
+      - name: Build installer (publish src + self-sign + Inno)
         shell: pwsh
         env:
           CODE_SIGNING_PFX_BASE64: ${{ secrets.CODE_SIGNING_PFX_BASE64 }}
           CODE_SIGNING_PFX_PASSWORD: ${{ secrets.CODE_SIGNING_PFX_PASSWORD }}
         run: |
           $version = '${{ steps.meta.outputs.version }}'
-          $pfx = ''
-          $pass = ''
-          $gen = $true
           if ($env:CODE_SIGNING_PFX_BASE64 -and $env:CODE_SIGNING_PFX_PASSWORD) {
             New-Item -ItemType Directory -Force -Path artifacts/certs | Out-Null
-            $pfx = (Resolve-Path .).Path + '\artifacts\certs\codesign-secret.pfx'
+            $pfx = Join-Path (Get-Location) 'artifacts\certs\codesign-secret.pfx'
             [IO.File]::WriteAllBytes($pfx, [Convert]::FromBase64String($env:CODE_SIGNING_PFX_BASE64))
-            $pass = $env:CODE_SIGNING_PFX_PASSWORD
-            $gen = $false
             Write-Host "Using repository CODE_SIGNING_PFX secret"
+            & pwsh -File src/scripts/Build-Installer.ps1 -Version $version -PfxPath $pfx -PfxPassword $env:CODE_SIGNING_PFX_PASSWORD
           } else {
             Write-Host "No CODE_SIGNING_PFX secret — generating ephemeral self-signed cert"
-          }
-          $args = @{
-            Version = $version
-            SkipTests = $false
-          }
-          if ($gen) {
-            & pwsh -File archive/wrq-win-001/windows/scripts/Build-Installer.ps1 -Version $version -GenerateCiCert
-          } else {
-            & pwsh -File archive/wrq-win-001/windows/scripts/Build-Installer.ps1 -Version $version -PfxPath $pfx -PfxPassword $pass
+            & pwsh -File src/scripts/Build-Installer.ps1 -Version $version -GenerateCiCert
           }
           if ($LASTEXITCODE -ne 0) { throw "Build-Installer.ps1 failed: $LASTEXITCODE" }
 
@@ -128,16 +117,16 @@ jobs:
         shell: pwsh
         run: |
           $setup = Get-ChildItem artifacts/installer -Filter *.exe | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          $exe = "artifacts/publish/Waraq.Windows.exe"
+          $exe = "artifacts/publish/Waraq.Windows.App.exe"
+          if (-not (Test-Path $exe)) {
+            $exe = (Get-ChildItem artifacts/publish -Filter *.exe | Select-Object -First 1).FullName
+          }
           foreach ($f in @($exe, $setup.FullName)) {
             $s = Get-AuthenticodeSignature -FilePath $f
             Write-Host "FILE $f"
-            Write-Host "  Status=$($s.Status) StatusMessage=$($s.StatusMessage)"
-            Write-Host "  Subject=$($s.SignerCertificate.Subject)"
-            Write-Host "  Thumbprint=$($s.SignerCertificate.Thumbprint)"
+            Write-Host "  Status=$($s.Status) Subject=$($s.SignerCertificate.Subject)"
             if (-not $s.SignerCertificate) { throw "No signature on $f" }
           }
-          # Self-signed often NotTrusted until CER imported — require signature present, not chain trust
           if ($setup.Length -lt 1MB) { throw "Setup.exe unexpectedly small" }
 
       - name: Upload portable zip artifact
@@ -170,22 +159,21 @@ jobs:
           generate_release_notes: true
           name: Waraq for Windows ${{ steps.meta.outputs.version }}
           body: |
-            ## Waraq for Windows — ${{ steps.meta.outputs.version }}
+            ## Waraq for Windows — ${{ steps.meta.outputs.version }} (WRQ-WIN-002)
 
-            GPL-3.0 · [install guide](https://github.com/taroo0ooq/waraq-archive/wrq-win-001/windows/blob/main/docs/install/WINDOWS.md)
+            WinUI 3 parity app · GPL-3.0 · [install guide](https://github.com/taroo0ooq/waraq-windows/blob/main/docs/install/WINDOWS.md)
 
-            ### Recommended: Installer
+            ### Installer (recommended)
             1. Download `Waraq.Windows-Setup-win-x64-*.exe`
-            2. Optional: import `WaraqWindows-CodeSigning.cer` (self-signed trust — see install docs)
-            3. Run Setup (per-user under `%LOCALAPPDATA%\Programs\WaraqWindows`)
-            4. Launch → Browse video/GIF → Apply wallpaper
+            2. Optional: import `WaraqWindows-CodeSigning.cer`
+            3. Run Setup → Start Menu → Waraq for Windows
 
-            ### Secondary: Portable zip
-            Extract `Waraq.Windows-win-x64-*.zip` and run `Waraq.Windows.exe`.
+            ### Portable
+            Extract zip → run `Waraq.Windows.App.exe`
 
-            ### Signing / prereqs
-            - Authenticode: **project self-signed** (not EV). SmartScreen may still warn.
-            - Payload is **self-contained** (.NET 8 runtime bundled). No third-party mirrors.
+            ### Notes
+            - Self-signed Authenticode (SmartScreen may warn)
+            - Self-contained .NET 8 + Windows App SDK
           files: |
             artifacts/${{ steps.meta.outputs.artifact_name }}.zip
             artifacts/SHA256SUMS-portable.txt
@@ -206,9 +194,9 @@ jobs:
           body: |
             ## Waraq for Windows — ${{ steps.meta.outputs.version }}
 
-            Phase 6 installer draft (workflow_dispatch).
+            Phase 9 installer draft (WRQ-WIN-002).
 
-            Install: [docs/install/WINDOWS.md](https://github.com/taroo0ooq/waraq-archive/wrq-win-001/windows/blob/main/docs/install/WINDOWS.md)
+            Install: [docs/install/WINDOWS.md](https://github.com/taroo0ooq/waraq-windows/blob/main/docs/install/WINDOWS.md)
           files: |
             artifacts/${{ steps.meta.outputs.artifact_name }}.zip
             artifacts/SHA256SUMS-portable.txt
@@ -221,12 +209,11 @@ jobs:
         shell: pwsh
         run: |
           @"
-          ## windows-release (Phase 6)
+          ## windows-release (WRQ-WIN-002 Phase 9)
 
           - version: `${{ steps.meta.outputs.version }}`
           - portable: `${{ steps.meta.outputs.artifact_name }}.zip`
           - setup: `${{ steps.meta.outputs.setup_name }}.exe`
           - run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           - install: ``docs/install/WINDOWS.md``
-          - ADR: ``docs/adr/0002-windows-installer-and-signing.md``
           "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8

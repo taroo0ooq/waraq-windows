@@ -4,7 +4,7 @@
 |-------|--------|
 | **Status** | Accepted |
 | **Date** | 2026-08-06 |
-| **work_id** | WRQ-WIN-001 Phase 6 |
+| **work_id** | WRQ-WIN-001 Phase 6 · **superseded product path WRQ-WIN-002 Phase 9** |
 | **Deciders** | Pipeline Warden (per Nova RO + owner) |
 
 ## Context
@@ -18,9 +18,9 @@ Phase 5 shipped a **portable self-contained zip** only. Owner required a real **
    - Produces `Waraq.Windows-Setup-win-x64-<version>.exe`  
    - Per-user default dir (`%LOCALAPPDATA%\Programs\WaraqWindows`), Start Menu shortcut, optional desktop icon, uninstaller, LICENSE.
 
-2. **App payload:** **Self-contained** `dotnet publish -r win-x64` (same as Phase 5).  
-   - **Prereq strategy:** .NET 8 runtime is **bundled inside the app publish output** — no third-party mirror downloads.  
-   - VC++ / OS components remain Windows-provided; no unofficial redistributables.
+2. **App payload:** **Self-contained** `dotnet publish -r win-x64` of **`src/Waraq.Windows.App`** (WinUI 3; WASDK self-contained).  
+   - **Prereq strategy:** .NET 8 + Windows App SDK **bundled** — no third-party mirror downloads.  
+   - Script: `src/scripts/Build-Installer.ps1` (archive MVP scripts are historical only).
 
 3. **Code signing:** **Self-signed** Authenticode (owner-directed; not EV/OV).  
    - CI generates an ephemeral project code-signing cert **or** uses optional GitHub secrets `CODE_SIGNING_PFX_BASE64` + `CODE_SIGNING_PFX_PASSWORD`.  
