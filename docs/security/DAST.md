@@ -3,22 +3,23 @@
 | Field | Value |
 |-------|--------|
 | **Status** | **N/A** (Not applicable) |
-| **work_id** | WRQ-WIN-001 |
-| **phase** | 6 Installer (reaffirm N/A — still no network surface) |
-| **last_reviewed** | 2026-08-06 |
-| **reviewer_desk** | Atlas Forge (Phase 6-fix CI harden) / Cipher Shield (posture) |
+| **work_id** | WRQ-WIN-002 |
+| **phase** | 3-Secure (Cipher Shield) — Host video/GIF on WinUI |
+| **last_reviewed** | 2026-08-07 |
+| **reviewer_desk** | Cipher Shield |
 | **owner_desk** | Pipeline Warden (gate) → Cipher Shield (deep scans when surface exists) |
+| **main_sha_reviewed** | `4c741e7` (+ Secure harden PR if open) |
 
 ## Why N/A
 
-The Windows product surface through Phase 2/3 is a **local WPF desktop application** (`windows/Waraq.Windows`):
+The Windows product surface through Phase 3 Host is a **local WinUI 3 desktop application** (`src/Waraq.Windows.App`):
 
 - No HTTP listener
 - No embedded web server
 - No authenticated network API owned by this app binary
-- No `HttpClient` / socket client in the Windows tree
-- Gallery network clients (upstream macOS) are **not** wired into the Windows MVP
-- Media load is restricted to **local drive files** (UNC/URL rejected — Phase 3 hardening)
+- No `HttpClient` / socket client in the `src/**` Windows tree
+- Gallery network clients (upstream macOS) are **not** wired into the Windows binary
+- Media load is restricted to **local drive files** (`LocalMediaPathGate` — UNC/URL/device rejected; post-normalize re-check + size soft-caps)
 
 Dynamic Application Security Testing (DAST) requires a running network-reachable target (URL). None exists for the Windows app today.
 
@@ -31,11 +32,9 @@ Dynamic Application Security Testing (DAST) requires a running network-reachable
 
 ## When to flip from N/A
 
-Flip **Status** away from N/A when any of the following land:
-
 1. App hosts or proxies HTTP(S) locally or remotely
 2. Installer/update channel serves content that must be probed
-3. Web-based settings/gallery UI is shipped beside WPF
+3. Web-based settings/gallery UI is shipped beside WinUI
 4. Outbound gallery/API clients are enabled in the Windows binary
 5. Nova routes a Secure phase that names a concrete DAST target URL
 
@@ -45,17 +44,9 @@ Flip **Status** away from N/A when any of the following land:
 - Build/test: `.github/workflows/windows-ci.yml`
 - Playwright / Windows QA smoke: `.github/workflows/playwright.yml`
 - macOS upstream CI (unchanged): `.github/workflows/build.yml`
-- DAST gate workflow: `.github/workflows/dast.yml` — **must finish SUCCESS** when Status is N/A  
-  (Phase 6-fix: `cancel-in-progress: false` so required checks are not cancelled mid-run)
+- DAST gate workflow: `.github/workflows/dast.yml`
 
-## Phase 3 evidence
+## Evidence
 
-- Secure review: `docs/security/WRQ-WIN-001-phase3-secure-review.md`
-- CodeQL csharp on `main` / Phase 3 PR (see Actions)
-
-## Phase 6-fix note
-
-Installer + Authenticode paths do **not** introduce an app-owned HTTP attack surface. DAST remains **N/A**.  
-A prior PR #6 failure was **workflow cancellation** (concurrency), not a content/doc failure — fixed in `.github/workflows/dast.yml`.
-
-<!-- phase6-fix: retrigger CI after runner stall 2026-08-06T17:26:52Z -->
+- Secure review: `docs/security/WRQ-WIN-002-phase3-secure-review.md`
+- Prior (superseded product line): `docs/security/WRQ-WIN-001-phase3-secure-review.md`
