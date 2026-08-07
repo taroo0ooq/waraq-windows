@@ -1,6 +1,6 @@
 // Waraq for Windows — GPL-3.0 derivative of bahamut42/waraq.
 // Copyright (C) Waraq authors and Waraq Windows contributors.
-// Phase 3–5: WorkerW surface — video/GIF/procedural.
+// Phase 3–7: WorkerW surface — video/GIF/procedural + pause.
 
 using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Dispatching;
@@ -30,11 +30,57 @@ public sealed class WallpaperController : IDisposable
 
     public string StrategyName => _host.StrategyName;
     public bool IsRunning => _surface is not null;
+    public bool IsPlaybackPaused { get; private set; }
+    public bool UserPaused { get; private set; }
     public string? ActivePath => _activePath;
     public string? ActiveProceduralId => _activeProceduralId;
     public MediaKind ActiveKind => _activeKind;
 
     public WallpaperHostProbeResult Probe() => _host.Probe();
+
+    public void SetUserPaused(bool paused)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        UserPaused = paused;
+        ApplyPauseState(paused, force: true);
+    }
+
+    public void SetGovernorPaused(bool paused)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        if (UserPaused)
+        {
+            ApplyPauseState(true, force: true);
+            return;
+        }
+
+        ApplyPauseState(paused, force: false);
+    }
+
+    private void ApplyPauseState(bool paused, bool force)
+    {
+        if (_surface is null)
+        {
+            IsPlaybackPaused = paused;
+            return;
+        }
+
+        if (!force && IsPlaybackPaused == paused)
+        {
+            return;
+        }
+
+        if (paused)
+        {
+            _surface.PausePlayback();
+        }
+        else
+        {
+            _surface.ResumePlayback();
+        }
+
+        IsPlaybackPaused = paused;
+    }
 
     public async Task ApplyAsync(string path, WallpaperFitMode fit = WallpaperFitMode.Fill)
     {
@@ -62,7 +108,6 @@ public sealed class WallpaperController : IDisposable
         var window = await CreateAttachedSurfaceAsync().ConfigureAwait(true);
         if (kind == MediaKind.Image)
         {
-            // treat static image like GIF path (BitmapImage)
             await window.InstallMediaAsync(full, MediaKind.Gif, fit).ConfigureAwait(true);
         }
         else
@@ -71,6 +116,10 @@ public sealed class WallpaperController : IDisposable
         }
 
         _surface = window;
+        if (UserPaused)
+        {
+            ApplyPauseState(true, force: true);
+        }
     }
 
     public void ApplyProcedural(string engineId)
@@ -85,10 +134,13 @@ public sealed class WallpaperController : IDisposable
         _activeProceduralId = engine.Id;
         _activeKind = MediaKind.Procedural;
 
-        // sync attach
         var window = CreateAttachedSurfaceAsync().GetAwaiter().GetResult();
         window.InstallProcedural(engine);
         _surface = window;
+        if (UserPaused)
+        {
+            ApplyPauseState(true, force: true);
+        }
     }
 
     public void Stop()
@@ -142,6 +194,7 @@ public sealed class WallpaperController : IDisposable
         _activePath = null;
         _activeProceduralId = null;
         _activeKind = MediaKind.Unknown;
+        IsPlaybackPaused = false;
     }
 }
 
@@ -157,6 +210,7 @@ internal sealed class WallpaperSurfaceWindow : Window
     private int _rw;
     private int _rh;
     private readonly System.Diagnostics.Stopwatch _clock = new();
+    private bool _paused;
 
     public WallpaperSurfaceWindow()
     {
@@ -215,7 +269,6 @@ internal sealed class WallpaperSurfaceWindow : Window
         _proc = engine;
         var root = (Grid)Content!;
 
-        // Render at reduced resolution for CPU budget; stretch to desktop.
         var (vx, vy, vw, vh) = DesktopWallpaperHost.GetVirtualScreenPixels();
         _ = (vx, vy);
         _rw = Math.Clamp(vw / 3, 320, 960);
@@ -234,15 +287,43 @@ internal sealed class WallpaperSurfaceWindow : Window
         _clock.Restart();
         var dq = DispatcherQueue.GetForCurrentThread();
         _timer = dq.CreateTimer();
-        _timer.Interval = TimeSpan.FromMilliseconds(33); // ~30fps
+        _timer.Interval = TimeSpan.FromMilliseconds(33);
         _timer.Tick += (_, _) => RenderProceduralTick();
         _timer.Start();
         RenderProceduralTick();
     }
 
+    public void PausePlayback()
+    {
+        _paused = true;
+        try
+        {
+            _timer?.Stop();
+            _mediaPlayer?.Pause();
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+
+    public void ResumePlayback()
+    {
+        _paused = false;
+        try
+        {
+            _mediaPlayer?.Play();
+            _timer?.Start();
+        }
+        catch
+        {
+            // ignore
+        }
+    }
+
     private void RenderProceduralTick()
     {
-        if (_proc is null || _wb is null || _frame is null)
+        if (_paused || _proc is null || _wb is null || _frame is null)
         {
             return;
         }
@@ -275,6 +356,7 @@ internal sealed class WallpaperSurfaceWindow : Window
             _proc = null;
             _frame = null;
             _wb = null;
+            _paused = false;
 
             if (_mediaPlayer is not null)
             {

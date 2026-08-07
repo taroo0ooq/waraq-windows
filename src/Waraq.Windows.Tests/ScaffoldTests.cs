@@ -11,9 +11,9 @@ namespace Waraq.Windows.Tests;
 public class AppInfoTests
 {
     [Fact]
-    public void Version_IsPhase6Line()
+    public void Version_IsPhase7Line()
     {
-        Assert.Contains("phase6", AppInfo.Version, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("phase7", AppInfo.Version, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

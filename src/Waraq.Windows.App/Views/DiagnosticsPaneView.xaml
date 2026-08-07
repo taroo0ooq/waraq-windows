@@ -1,0 +1,15 @@
+<UserControl
+    x:Class="Waraq.Windows.App.Views.DiagnosticsPaneView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer Padding="28,24">
+        <StackPanel MaxWidth="720">
+            <TextBlock Style="{StaticResource WaraqPaneTitleTextStyle}" Text="Diagnostics"/>
+            <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8" Margin="0,0,0,12"
+                       Text="Local sampling only. No logs leave this device. GPU % is not claimed (no mac IOKit GPU path)."/>
+            <TextBlock x:Name="SampleText" FontFamily="Consolas" FontSize="13" TextWrapping="Wrap"/>
+            <Button Content="Refresh now" Click="OnRefresh" Margin="0,12,0,0" HorizontalAlignment="Left"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
