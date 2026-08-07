@@ -22,12 +22,12 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         Title = _vm.WindowTitle;
-        AppWindow.Resize(new global::Windows.Graphics.SizeInt32(720, 560));
+        AppWindow.Resize(new global::Windows.Graphics.SizeInt32(760, 580));
 
-        FooterStatus.Text = _vm.ProductLine + " · Phase 3 host: Apply/Stop local video or GIF";
+        FooterStatus.Text = _vm.ProductLine + " · Phase 4 library + profiles";
         RebuildNav();
         _navReady = true;
-        SelectPane(SettingsPaneId.Wallpapers);
+        SelectPane(SettingsPaneId.Library);
 
         Closed += (_, _) =>
         {
@@ -73,7 +73,7 @@ public sealed partial class MainWindow : Window
 
         _vm.IsAdvancedMode = AdvancedToggle.IsOn;
         var current = ParsePaneTag((NavView.SelectedItem as NavigationViewItem)?.Tag)
-                      ?? SettingsPaneId.Wallpapers;
+                      ?? SettingsPaneId.Library;
         RebuildNav();
         if (!_vm.IsAdvancedMode && current == SettingsPaneId.Diagnostics)
         {
@@ -111,7 +111,13 @@ public sealed partial class MainWindow : Window
     private void ShowPane(SettingsPaneId id)
     {
         var desc = SettingsNavCatalog.All.First(p => p.Id == id);
-        if (id is SettingsPaneId.Wallpapers or SettingsPaneId.Library)
+        if (id == SettingsPaneId.Library)
+        {
+            ContentFrame.Content = new LibraryPaneView(this, ApplyPathAsync, s => FooterStatus.Text = s);
+            return;
+        }
+
+        if (id == SettingsPaneId.Wallpapers)
         {
             var playback = new PlaybackPaneView();
             playback.Bind(desc, _vm.IsAdvancedMode, ApplyWallpaperAsync, StopWallpaper);
@@ -124,6 +130,13 @@ public sealed partial class MainWindow : Window
         ContentFrame.Content = view;
     }
 
+    private async Task ApplyPathAsync(string path)
+    {
+        await App.Wallpaper.ApplyAsync(path, WallpaperFitMode.Fill);
+        FooterStatus.Text =
+            $"Applied ({App.Wallpaper.ActiveKind}): {App.Wallpaper.ActivePath}";
+    }
+
     private async Task ApplyWallpaperAsync()
     {
         var hwnd = WindowNative.GetWindowHandle(this);
@@ -131,14 +144,10 @@ public sealed partial class MainWindow : Window
         InitializeWithWindow.Initialize(picker, hwnd);
         picker.ViewMode = PickerViewMode.Thumbnail;
         picker.SuggestedStartLocation = PickerLocationId.VideosLibrary;
-        picker.FileTypeFilter.Add(".mp4");
-        picker.FileTypeFilter.Add(".webm");
-        picker.FileTypeFilter.Add(".mkv");
-        picker.FileTypeFilter.Add(".mov");
-        picker.FileTypeFilter.Add(".m4v");
-        picker.FileTypeFilter.Add(".avi");
-        picker.FileTypeFilter.Add(".wmv");
-        picker.FileTypeFilter.Add(".gif");
+        foreach (var ext in new[] { ".mp4", ".webm", ".mkv", ".mov", ".m4v", ".avi", ".wmv", ".gif" })
+        {
+            picker.FileTypeFilter.Add(ext);
+        }
 
         var file = await picker.PickSingleFileAsync();
         if (file is null)
@@ -149,9 +158,7 @@ public sealed partial class MainWindow : Window
 
         try
         {
-            await App.Wallpaper.ApplyAsync(file.Path, WallpaperFitMode.Fill);
-            FooterStatus.Text =
-                $"Applied ({App.Wallpaper.ActiveKind}): {App.Wallpaper.ActivePath} · Stop to clear · exit also stops";
+            await ApplyPathAsync(file.Path);
         }
         catch (Exception ex)
         {

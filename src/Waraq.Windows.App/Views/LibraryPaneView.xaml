@@ -1,0 +1,43 @@
+<UserControl
+    x:Class="Waraq.Windows.App.Views.LibraryPaneView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <Grid Padding="28,24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Style="{StaticResource WaraqPaneTitleTextStyle}" Text="Library"/>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" Spacing="8" Margin="0,0,0,12">
+            <Button x:Name="ImportButton" Content="Import…" Click="OnImportClick"/>
+            <Button x:Name="ApplyButton" Content="Apply selected" Click="OnApplyClick"/>
+            <Button x:Name="RemoveButton" Content="Remove" Click="OnRemoveClick"/>
+            <Button x:Name="RefreshButton" Content="Reload" Click="OnRefreshClick"/>
+        </StackPanel>
+
+        <ListView x:Name="ItemsList" Grid.Row="2" SelectionMode="Single">
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Grid Padding="0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="{Binding DisplayName}" FontWeight="SemiBold"/>
+                            <TextBlock Text="{Binding Subtitle}" FontSize="12" Opacity="0.7"/>
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding Kind}" VerticalAlignment="Center" Opacity="0.6" Margin="12,0,0,0"/>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+
+        <TextBlock x:Name="StatusText" Grid.Row="3" Margin="0,12,0,0" FontSize="12" Opacity="0.8" TextWrapping="Wrap"/>
+    </Grid>
+</UserControl>
