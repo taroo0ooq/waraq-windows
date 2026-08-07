@@ -1,31 +1,29 @@
-# WRQ-WIN-001 Phase 4 — QA gate (Stagecraft QA)
-# Browser Playwright is N/A for WPF desktop. This workflow is the required "playwright"
-# GitHub check name and now runs a real Windows QA smoke: build, unit/integration tests,
-# fixture generation, and residual-risk summary. Not an empty stub.
+# WRQ-WIN-002 Phase 1 — QA smoke for src/ WinUI scaffold
+# Required check name remains "playwright" for branch protection continuity.
 name: playwright
 
 on:
   push:
     branches: [main]
     paths:
-      - "archive/wrq-win-001/windows/**"
+      - "src/**"
       - "e2e/**"
       - ".github/workflows/playwright.yml"
   pull_request:
     branches: [main]
     paths:
-      - "archive/wrq-win-001/windows/**"
+      - "src/**"
       - "e2e/**"
       - ".github/workflows/playwright.yml"
   workflow_dispatch:
 
 concurrency:
   group: playwright-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   windows-qa-smoke:
-    name: Windows QA smoke (WPF / WorkerW)
+    name: Windows QA smoke (WinUI scaffold)
     runs-on: windows-latest
     timeout-minutes: 30
 
@@ -38,54 +36,28 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
-      - name: Setup FFmpeg (fixtures)
-        uses: FedericoCarboni/setup-ffmpeg@v3
-        with:
-          ffmpeg-version: release
-
-      - name: Run Windows QA smoke script
-        shell: pwsh
+      - name: Restore + build + test
+        working-directory: src
         run: |
-          Set-StrictMode -Version Latest
-          $ErrorActionPreference = "Stop"
-          ./e2e/windows-qa-smoke.ps1 -Configuration Release
+          dotnet restore Waraq.Windows.sln
+          dotnet build Waraq.Windows.Tests/Waraq.Windows.Tests.csproj -c Release --no-restore
+          dotnet test Waraq.Windows.Tests/Waraq.Windows.Tests.csproj -c Release --no-build --verbosity minimal
+          dotnet build Waraq.Windows.App/Waraq.Windows.App.csproj -c Release -p:Platform=x64 --no-restore
 
-      - name: Upload QA artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-qa-smoke-results
-          path: |
-            e2e/out/**
-            archive/wrq-win-001/windows/**/TestResults/**
-          if-no-files-found: ignore
+      - name: Residual risk summary
+        run: |
+          echo "## WRQ-WIN-002 Phase 1 smoke" >> $env:GITHUB_STEP_SUMMARY
+          echo "" >> $env:GITHUB_STEP_SUMMARY
+          echo "- WinUI 3 unpackaged app builds (x64)." >> $env:GITHUB_STEP_SUMMARY
+          echo "- Unit tests for path gate / classifier / host probe." >> $env:GITHUB_STEP_SUMMARY
+          echo "- No live WorkerW attach yet (Phase 3)." >> $env:GITHUB_STEP_SUMMARY
+          echo "- Browser Playwright N/A for desktop WinUI." >> $env:GITHUB_STEP_SUMMARY
 
   browser-playwright-na:
     name: Browser Playwright N/A (documented)
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Residual risk — no web surface
-        run: |
-          set -euo pipefail
-          {
-            echo "## Browser Playwright: N/A"
-            echo ""
-            echo "Waraq Windows MVP is **WPF desktop** (WorkerW + MediaElement/GIF)."
-            echo "There is **no browser UI** in scope for WRQ-WIN-001 Phase 4."
-            echo ""
-            echo "| Item | Status |"
-            echo "|------|--------|"
-            echo "| Browser Playwright specs | N/A — not applicable |"
-            echo "| Windows QA smoke (sibling job) | Required real gate |"
-            echo "| Full WinAppDriver/FlaUI UI drive | Deferred residual (see docs/qa) |"
-            echo ""
-            echo "This job exits 0 as an explicit N/A documentation gate so the workflow"
-            echo "name \`playwright\` remains a hard required check without fake browser runs."
-          } | tee -a "$GITHUB_STEP_SUMMARY"
-          test -f e2e/README.md
-          test -f docs/qa/WRQ-WIN-001-phase4-qa-matrix.md || test -f e2e/README.md
-# retrigger 2026-08-06T17:27:19.374792Z
+      - run: |
+          echo "Browser Playwright is N/A for WinUI desktop." >> "$GITHUB_STEP_SUMMARY"
+          echo "Windows QA smoke job is the real gate." >> "$GITHUB_STEP_SUMMARY"

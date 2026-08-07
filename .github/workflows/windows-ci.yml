@@ -1,32 +1,28 @@
-# WRQ-WIN-001 Phase 1b — Windows .NET build + test (additive to macOS build.yml)
+# WRQ-WIN-002 Phase 1 — Windows build + test for src/ (WinUI 3)
 name: windows-ci
 
 on:
   push:
     branches: [main]
     paths:
-      - "archive/wrq-win-001/windows/**"
+      - "src/**"
       - ".github/workflows/windows-ci.yml"
   pull_request:
     branches: [main]
     paths:
-      - "archive/wrq-win-001/windows/**"
+      - "src/**"
       - ".github/workflows/windows-ci.yml"
   workflow_dispatch:
 
 concurrency:
   group: windows-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build-and-test:
     name: Build and Test (windows-latest)
     runs-on: windows-latest
-    timeout-minutes: 30
-
-    defaults:
-      run:
-        working-directory: archive/wrq-win-001/windows
+    timeout-minutes: 40
 
     steps:
       - name: Checkout
@@ -43,19 +39,30 @@ jobs:
           dotnet --list-sdks
 
       - name: Restore
-        run: dotnet restore WaraqWindows.sln
+        working-directory: src
+        run: dotnet restore Waraq.Windows.sln
 
-      - name: Build (Release)
-        run: dotnet build WaraqWindows.sln -c Release --no-restore
+      - name: Build libraries + tests
+        working-directory: src
+        run: |
+          dotnet build Waraq.Windows.Core/Waraq.Windows.Core.csproj -c Release --no-restore
+          dotnet build Waraq.Windows.Host/Waraq.Windows.Host.csproj -c Release --no-restore
+          dotnet build Waraq.Windows.Engines/Waraq.Windows.Engines.csproj -c Release --no-restore
+          dotnet build Waraq.Windows.Shell/Waraq.Windows.Shell.csproj -c Release --no-restore
+          dotnet build Waraq.Windows.Tests/Waraq.Windows.Tests.csproj -c Release --no-restore
 
-      - name: Test (Release)
-        run: dotnet test WaraqWindows.sln -c Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
+      - name: Build WinUI App (x64)
+        working-directory: src
+        run: dotnet build Waraq.Windows.App/Waraq.Windows.App.csproj -c Release -p:Platform=x64 --no-restore
+
+      - name: Test
+        working-directory: src
+        run: dotnet test Waraq.Windows.Tests/Waraq.Windows.Tests.csproj -c Release --no-build --verbosity normal --logger "trx;LogFileName=test-results.trx"
 
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: windows-test-results
-          path: archive/wrq-win-001/windows/**/TestResults/**
+          name: windows-test-results-src
+          path: src/**/TestResults/**
           if-no-files-found: ignore
-# retrigger 2026-08-06T17:27:19.374341Z
