@@ -1,5 +1,5 @@
-# WRQ-WIN-001 Phase 4 — Windows QA smoke (Stagecraft QA)
-# Builds Release, generates fixtures, runs unit + STA integration tests, writes evidence.
+# WRQ-WIN-002 Phase 3-QA — Windows QA smoke (Stagecraft QA)
+# Builds src/ WinUI solution, runs unit tests, launches app briefly, writes evidence.
 [CmdletBinding()]
 param(
     [ValidateSet('Debug', 'Release')]
@@ -10,10 +10,12 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $RepoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
-$WindowsDir = Join-Path $RepoRoot 'archive/wrq-win-001/windows'
+$SrcDir = Join-Path $RepoRoot 'src'
 $OutDir = Join-Path $RepoRoot 'e2e/out'
 $FixtureDir = Join-Path $RepoRoot 'e2e/fixtures'
-$Solution = Join-Path $WindowsDir 'WaraqWindows.sln'
+$Solution = Join-Path $SrcDir 'Waraq.Windows.sln'
+$TestProj = Join-Path $SrcDir 'Waraq.Windows.Tests/Waraq.Windows.Tests.csproj'
+$AppProj = Join-Path $SrcDir 'Waraq.Windows.App/Waraq.Windows.App.csproj'
 
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 New-Item -ItemType Directory -Force -Path $FixtureDir | Out-Null
@@ -29,7 +31,7 @@ function Write-Log {
     Add-Content -Path $log -Value $line
 }
 
-Write-Log "WRQ-WIN-001 Phase 4 Windows QA smoke starting (Configuration=$Configuration)"
+Write-Log "WRQ-WIN-002 Phase 3-QA Windows smoke starting (Configuration=$Configuration)"
 Write-Log "RepoRoot=$RepoRoot"
 
 $gif = Join-Path $FixtureDir 'sample.gif'
@@ -46,7 +48,7 @@ function Ensure-FfmpegFixture {
     }
     $ffmpeg = Get-Command ffmpeg -ErrorAction SilentlyContinue
     if (-not $ffmpeg) {
-        Write-Log "WARNING: ffmpeg not on PATH - skipping generation of $OutPath"
+        Write-Log "WARNING: ffmpeg not on PATH - skipping $OutPath"
         return
     }
     Write-Log "Generating fixture: $OutPath"
@@ -68,36 +70,48 @@ Ensure-FfmpegFixture -OutPath $mp4 -FfmpegArgs @(
 $env:WARAQ_QA_FIXTURE_DIR = $FixtureDir
 Write-Log "WARAQ_QA_FIXTURE_DIR=$FixtureDir"
 
-Push-Location $WindowsDir
+Push-Location $SrcDir
 try {
     Write-Log 'dotnet restore'
     dotnet restore $Solution
     if ($LASTEXITCODE -ne 0) { throw 'dotnet restore failed' }
 
-    Write-Log "dotnet build -c $Configuration"
-    dotnet build $Solution -c $Configuration --no-restore
-    if ($LASTEXITCODE -ne 0) { throw 'dotnet build failed' }
+    Write-Log "dotnet build tests -c $Configuration"
+    dotnet build $TestProj -c $Configuration --no-restore
+    if ($LASTEXITCODE -ne 0) { throw 'dotnet build tests failed' }
 
-    $trxName = 'phase4-qa-results.trx'
     Write-Log "dotnet test -c $Configuration"
-    dotnet test $Solution -c $Configuration --no-build --verbosity normal --logger "trx;LogFileName=$trxName" --logger 'console;verbosity=detailed'
+    $trxName = 'phase3-qa-results.trx'
+    dotnet test $TestProj -c $Configuration --no-build --verbosity normal --logger "trx;LogFileName=$trxName" --logger 'console;verbosity=detailed'
     if ($LASTEXITCODE -ne 0) { throw 'dotnet test failed' }
 
-    $exe = Join-Path $WindowsDir "Waraq.Windows/bin/$Configuration/net8.0-windows/Waraq.Windows.exe"
-    if (-not (Test-Path $exe)) {
-        throw "Release exe missing: $exe"
+    Write-Log "dotnet build WinUI App x64 -c $Configuration"
+    dotnet build $AppProj -c $Configuration -p:Platform=x64 --no-restore
+    if ($LASTEXITCODE -ne 0) { throw 'dotnet build app failed' }
+
+    $exeCandidates = @(
+        (Join-Path $SrcDir "Waraq.Windows.App/bin/x64/$Configuration/net8.0-windows10.0.19041.0/Waraq.Windows.App.exe"),
+        (Join-Path $SrcDir "Waraq.Windows.App/bin/x64/$Configuration/net8.0-windows10.0.19041.0/win-x64/Waraq.Windows.App.exe")
+    )
+    $exe = $exeCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $exe) {
+        $found = Get-ChildItem -Path (Join-Path $SrcDir 'Waraq.Windows.App/bin') -Recurse -Filter 'Waraq.Windows.App.exe' -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($found) { $exe = $found.FullName }
+    }
+    if (-not $exe -or -not (Test-Path $exe)) {
+        throw "WinUI exe missing after build under src/Waraq.Windows.App/bin"
     }
     Write-Log "Exe OK: $exe"
-    Copy-Item $exe (Join-Path $OutDir 'Waraq.Windows.exe') -Force
+    Copy-Item $exe (Join-Path $OutDir 'Waraq.Windows.App.exe') -Force
 
-    Write-Log 'Launch smoke (3s)...'
+    Write-Log 'Launch smoke (4s)...'
     $proc = Start-Process -FilePath $exe -PassThru -WindowStyle Minimized
-    Start-Sleep -Seconds 3
+    Start-Sleep -Seconds 4
     if ($proc.HasExited) {
-        throw "Waraq.Windows.exe exited early with code $($proc.ExitCode)"
+        throw "Waraq.Windows.App.exe exited early with code $($proc.ExitCode)"
     }
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue
-    Write-Log 'Launch smoke OK (process was alive, then stopped)'
+    Write-Log 'Launch smoke OK (process was alive then stopped)'
 }
 finally {
     Pop-Location
@@ -106,33 +120,34 @@ finally {
 $elapsed = (Get-Date) - $started
 $seconds = [int]$elapsed.TotalSeconds
 $summaryPath = Join-Path $OutDir 'smoke-summary.md'
-
 $summary = @"
 # Windows QA smoke summary
 
-- work_id: WRQ-WIN-001
-- phase: 4 Playwright/QA
+- work_id: WRQ-WIN-002
+- phase: 3-QA
 - desk: Stagecraft QA
 - configuration: $Configuration
 - elapsed_seconds: $seconds
-- fixtures: sample.gif / sample.mp4 (when ffmpeg available)
-- tests: dotnet test WaraqWindows.sln
-- launch: Waraq.Windows.exe 3s alive
+- solution: src/Waraq.Windows.sln
+- fixtures: sample.gif / sample.mp4
+- tests: Waraq.Windows.Tests
+- launch: Waraq.Windows.App.exe 4s alive
 - result: PASS
 
 ## Residual risk (explicit)
 
-- Browser Playwright: N/A (no web UI).
-- Full UI automation (WinAppDriver/FlaUI Browse dialog): deferred — path gate + STA Apply/Stop covered in tests; OpenFileDialog UX is manual matrix.
+- Browser Playwright: N/A (WinUI desktop; no web UI).
+- Full interactive Apply (file picker + visual wallpaper proof): soft residual for owner L&F; path gate + host probe + size caps automated.
+- Tray Stop wallpaper is code-reviewed (CMD_PAUSE -> App.Wallpaper.Stop); not UI-automateable without FlaUI.
 - Video decode depends on host Media Foundation codecs.
-- Explorer/WorkerW layout quirks may require re-Apply after Explorer restart.
+- WorkerW/Explorer variance may require re-Apply after Explorer restart.
+- Multi-monitor: one virtual-desktop surface (MVP note).
 
 ## Evidence
 
 - Log: e2e/out/smoke-log.txt
-- TRX under archive/wrq-win-001/windows/**/TestResults/
+- TRX under src/**/TestResults/
 "@
-
 Set-Content -Path $summaryPath -Value $summary -Encoding UTF8
 Write-Log "PASS - summary at $summaryPath"
 exit 0
