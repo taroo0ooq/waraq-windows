@@ -2,51 +2,55 @@
 
 | Field | Value |
 |-------|--------|
-| **Status** | **N/A** (Not applicable) |
+| **Status** | **N/A** (Not applicable — no inbound network listener) |
 | **work_id** | WRQ-WIN-002 |
-| **phase** | 3-Secure (Cipher Shield) — Host video/GIF on WinUI |
+| **phase** | **6-Secure** (Cipher Shield) — Gallery optional egress |
 | **last_reviewed** | 2026-08-07 |
 | **reviewer_desk** | Cipher Shield |
-| **owner_desk** | Pipeline Warden (gate) → Cipher Shield (deep scans when surface exists) |
-| **main_sha_reviewed** | `4c741e7` (+ Secure harden PR if open) |
+| **main_sha_baseline** | `5bca563` (PR #18 Gallery) + Phase 6-Secure harden PR |
 
-## Why N/A
+## Inbound DAST (ZAP / dynamic scan of app URL)
 
-The Windows product surface through Phase 3 Host is a **local WinUI 3 desktop application** (`src/Waraq.Windows.App`):
+**Still N/A.** The WinUI app does **not**:
 
-- No HTTP listener
-- No embedded web server
-- No authenticated network API owned by this app binary
-- No `HttpClient` / socket client in the `src/**` Windows tree
-- Gallery network clients (upstream macOS) are **not** wired into the Windows binary
-- Media load is restricted to **local drive files** (`LocalMediaPathGate` — UNC/URL/device rejected; post-normalize re-check + size soft-caps)
+- Host an HTTP listener
+- Embed a web server
+- Expose an authenticated local API
 
-Dynamic Application Security Testing (DAST) requires a running network-reachable target (URL). None exists for the Windows app today.
+There is **no durable URL target** for traditional DAST. Workflow `.github/workflows/dast.yml` remains a documentation gate requiring this file to declare **Status: N/A** (or Not applicable).
+
+## Outbound / egress surface (Phase 6 Gallery)
+
+Gallery introduces **optional user-initiated HTTPS client egress only**:
+
+| Trigger | Destination family | Notes |
+|---------|-------------------|--------|
+| Search | Pixabay / Pexels / NASA Images API | Only after explicit Search; keys local |
+| Import selected | HTTPS media URLs from result JSON | Validated by `GalleryUrlPolicy` (https, no private hosts, 512 MiB cap) |
+| Browse Web / Open page | Default browser (`ShellExecute`) | No scrape/proxy of third-party wallpaper sites |
+
+**Not DAST-in-scope as an app server**, but **in Secure scope** as client SSRF/privacy review (see `docs/security/WRQ-WIN-002-phase6-secure-review.md` and `PRIVACY_GALLERY.md`).
+
+## When inbound Status flips from N/A
+
+1. App hosts or proxies HTTP(S) locally or remotely  
+2. Installer/update channel must be probed as a service  
+3. Embedded web UI becomes a network target  
+4. Nova names a concrete DAST target URL  
+
+Outbound Gallery alone does **not** flip inbound DAST to REQUIRED.
 
 ## Gate policy
 
-| Condition | Required outcome |
-|-----------|------------------|
-| No network attack surface | Workflow `.github/workflows/dast.yml` **green** with this document declaring **Status: N/A** |
-| Network surface introduced (local API, updater endpoint, web UI, gallery client, etc.) | Update this doc to **Status: REQUIRED**; replace stub job with real DAST (e.g. ZAP baseline against documented URL); Cipher Shield owns deep findings |
+| Condition | Outcome |
+|-----------|---------|
+| No inbound listener + this doc Status N/A | `dast.yml` **green** |
+| Inbound surface appears | Status → **REQUIRED**; real DAST job; Cipher owns findings |
 
-## When to flip from N/A
+## Related
 
-1. App hosts or proxies HTTP(S) locally or remotely
-2. Installer/update channel serves content that must be probed
-3. Web-based settings/gallery UI is shipped beside WinUI
-4. Outbound gallery/API clients are enabled in the Windows binary
-5. Nova routes a Secure phase that names a concrete DAST target URL
-
-## Related workflows
-
-- SAST: `.github/workflows/codeql.yml` (CodeQL csharp)
-- Build/test: `.github/workflows/windows-ci.yml`
-- Playwright / Windows QA smoke: `.github/workflows/playwright.yml`
-- macOS upstream CI (unchanged): `.github/workflows/build.yml`
-- DAST gate workflow: `.github/workflows/dast.yml`
-
-## Evidence
-
-- Secure review: `docs/security/WRQ-WIN-002-phase3-secure-review.md`
-- Prior (superseded product line): `docs/security/WRQ-WIN-001-phase3-secure-review.md`
+- SAST: `.github/workflows/codeql.yml`  
+- Build/test: `.github/workflows/windows-ci.yml`  
+- Playwright: `.github/workflows/playwright.yml`  
+- Privacy: `docs/security/PRIVACY_GALLERY.md`  
+- Phase 6-Secure review: `docs/security/WRQ-WIN-002-phase6-secure-review.md`  
