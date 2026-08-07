@@ -22,12 +22,12 @@ public sealed partial class MainWindow : Window
     {
         InitializeComponent();
         Title = _vm.WindowTitle;
-        AppWindow.Resize(new global::Windows.Graphics.SizeInt32(760, 580));
+        AppWindow.Resize(new global::Windows.Graphics.SizeInt32(780, 600));
 
-        FooterStatus.Text = _vm.ProductLine + " · Phase 4 library + profiles";
+        FooterStatus.Text = _vm.ProductLine + " · Phase 6 gallery + privacy";
         RebuildNav();
         _navReady = true;
-        SelectPane(SettingsPaneId.Library);
+        SelectPane(SettingsPaneId.Gallery);
 
         Closed += (_, _) =>
         {
@@ -73,7 +73,7 @@ public sealed partial class MainWindow : Window
 
         _vm.IsAdvancedMode = AdvancedToggle.IsOn;
         var current = ParsePaneTag((NavView.SelectedItem as NavigationViewItem)?.Tag)
-                      ?? SettingsPaneId.Library;
+                      ?? SettingsPaneId.Gallery;
         RebuildNav();
         if (!_vm.IsAdvancedMode && current == SettingsPaneId.Diagnostics)
         {
@@ -111,15 +111,21 @@ public sealed partial class MainWindow : Window
     private void ShowPane(SettingsPaneId id)
     {
         var desc = SettingsNavCatalog.All.First(p => p.Id == id);
+        if (id == SettingsPaneId.Gallery)
+        {
+            ContentFrame.Content = new GalleryPaneView(s => FooterStatus.Text = s);
+            return;
+        }
+
         if (id == SettingsPaneId.Library)
-                {
-                    ContentFrame.Content = new LibraryPaneView(
-                        this,
-                        ApplyPathAsync,
-                        ApplyProcedural,
-                        s => FooterStatus.Text = s);
-                    return;
-                }
+        {
+            ContentFrame.Content = new LibraryPaneView(
+                this,
+                ApplyPathAsync,
+                ApplyProcedural,
+                s => FooterStatus.Text = s);
+            return;
+        }
 
         if (id == SettingsPaneId.Wallpapers)
         {
@@ -135,18 +141,18 @@ public sealed partial class MainWindow : Window
     }
 
     private async Task ApplyPathAsync(string path)
-        {
-            await App.Wallpaper.ApplyAsync(path, WallpaperFitMode.Fill);
-            FooterStatus.Text =
-                $"Applied ({App.Wallpaper.ActiveKind}): {App.Wallpaper.ActivePath}";
-        }
+    {
+        await App.Wallpaper.ApplyAsync(path, WallpaperFitMode.Fill);
+        FooterStatus.Text =
+            $"Applied ({App.Wallpaper.ActiveKind}): {App.Wallpaper.ActivePath}";
+    }
 
-        private void ApplyProcedural(string engineId)
-        {
-            App.Wallpaper.ApplyProcedural(engineId);
-            FooterStatus.Text =
-                $"Applied procedural ({App.Wallpaper.ActiveProceduralId}) via {App.Wallpaper.StrategyName}";
-        }
+    private void ApplyProcedural(string engineId)
+    {
+        App.Wallpaper.ApplyProcedural(engineId);
+        FooterStatus.Text =
+            $"Applied procedural ({App.Wallpaper.ActiveProceduralId}) via {App.Wallpaper.StrategyName}";
+    }
 
     private async Task ApplyWallpaperAsync()
     {
