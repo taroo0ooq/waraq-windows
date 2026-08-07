@@ -9,6 +9,7 @@ public enum MediaKind
     Video = 1,
     Gif = 2,
     Image = 3,
+    Procedural = 4,
 }
 
 public static class MediaPathClassifier
