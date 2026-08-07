@@ -3,12 +3,14 @@
 
 using Microsoft.UI.Xaml;
 using Waraq.Windows.App.HostRuntime;
+using Waraq.Windows.Core;
 
 namespace Waraq.Windows.App;
 
 public partial class App : Application
 {
     private Window? _window;
+    private OnboardingWindow? _onboarding;
 
     public static WallpaperController Wallpaper { get; } = new();
 
@@ -20,7 +22,30 @@ public partial class App : Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         _window = new MainWindow();
+        try
+        {
+            var dq = _window.DispatcherQueue;
+            AppServices.GovernorRuntime = new GovernorRuntime(dq);
+        }
+        catch
+        {
+            // governor optional if DQ missing
+        }
+
+        if (!AppServices.OnboardingState.HasCompleted)
+        {
+            _onboarding = new OnboardingWindow();
+            _onboarding.Activate();
+        }
+
         _window.Activate();
+    }
+
+    public static void ShowOnboardingAgain()
+    {
+        AppServices.OnboardingState.Reset();
+        var w = new OnboardingWindow();
+        w.Activate();
     }
 
     public static string HostRuntimeStatus()
@@ -30,13 +55,16 @@ public partial class App : Application
             return "Wallpaper: stopped · host " + Wallpaper.StrategyName;
         }
 
-        return $"Wallpaper: running ({Wallpaper.ActiveKind}) · {Wallpaper.ActivePath}";
+        var pause = Wallpaper.IsPlaybackPaused ? "paused" : "playing";
+        return $"Wallpaper: {pause} ({Wallpaper.ActiveKind}) · {Wallpaper.ActivePath ?? Wallpaper.ActiveProceduralId}";
     }
 
     public static void ShutdownWallpaper()
     {
         try
         {
+            AppServices.GovernorRuntime?.Dispose();
+            AppServices.GovernorRuntime = null;
             Wallpaper.Dispose();
         }
         catch

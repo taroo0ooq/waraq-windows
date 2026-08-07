@@ -24,10 +24,10 @@ public sealed partial class MainWindow : Window
         Title = _vm.WindowTitle;
         AppWindow.Resize(new global::Windows.Graphics.SizeInt32(780, 600));
 
-        FooterStatus.Text = _vm.ProductLine + " · Phase 6 gallery + privacy";
+        FooterStatus.Text = _vm.ProductLine + " · Phase 7 governor";
         RebuildNav();
         _navReady = true;
-        SelectPane(SettingsPaneId.Gallery);
+        SelectPane(SettingsPaneId.Performance);
 
         Closed += (_, _) =>
         {
@@ -73,7 +73,7 @@ public sealed partial class MainWindow : Window
 
         _vm.IsAdvancedMode = AdvancedToggle.IsOn;
         var current = ParsePaneTag((NavView.SelectedItem as NavigationViewItem)?.Tag)
-                      ?? SettingsPaneId.Gallery;
+                      ?? SettingsPaneId.General;
         RebuildNav();
         if (!_vm.IsAdvancedMode && current == SettingsPaneId.Diagnostics)
         {
@@ -132,6 +132,24 @@ public sealed partial class MainWindow : Window
             var playback = new PlaybackPaneView();
             playback.Bind(desc, _vm.IsAdvancedMode, ApplyWallpaperAsync, StopWallpaper);
             ContentFrame.Content = playback;
+            return;
+        }
+
+        if (id == SettingsPaneId.Performance)
+        {
+            ContentFrame.Content = new PerformancePaneView();
+            return;
+        }
+
+        if (id == SettingsPaneId.Diagnostics)
+        {
+            ContentFrame.Content = new DiagnosticsPaneView();
+            return;
+        }
+
+        if (id == SettingsPaneId.General)
+        {
+            ContentFrame.Content = new GeneralPaneView();
             return;
         }
 

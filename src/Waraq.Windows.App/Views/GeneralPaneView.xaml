@@ -1,0 +1,15 @@
+<UserControl
+    x:Class="Waraq.Windows.App.Views.GeneralPaneView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer Padding="28,24">
+        <StackPanel MaxWidth="720">
+            <TextBlock Style="{StaticResource WaraqPaneTitleTextStyle}" Text="General"/>
+            <TextBlock x:Name="StatusLine" Margin="0,0,0,16" TextWrapping="Wrap" Opacity="0.85"/>
+            <Button Content="Run setup wizard again…" Click="OnRerunOnboarding" HorizontalAlignment="Left"/>
+            <TextBlock Margin="0,16,0,0" FontSize="12" Opacity="0.7" TextWrapping="Wrap"
+                       Text="Onboarding completion is stored in %AppData%\Waraq\onboarding.json (local only)."/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

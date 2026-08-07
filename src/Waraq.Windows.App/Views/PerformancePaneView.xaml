@@ -1,0 +1,34 @@
+<UserControl
+    x:Class="Waraq.Windows.App.Views.PerformancePaneView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <ScrollViewer Padding="28,24">
+        <StackPanel MaxWidth="720" Spacing="0">
+            <TextBlock Style="{StaticResource WaraqPaneTitleTextStyle}" Text="Performance"/>
+            <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.8" Margin="0,0,0,12"
+                       Text="Local governor only — zero telemetry. Windows has no IOKit thermal API; battery/fullscreen/memory heuristics are used instead."/>
+
+            <ToggleSwitch x:Name="EnabledToggle" Header="Enable governor" Toggled="OnChanged"/>
+            <ToggleSwitch x:Name="BatteryToggle" Header="Pause on low battery" Toggled="OnChanged"/>
+            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,8">
+                <TextBlock Text="Battery threshold %" VerticalAlignment="Center"/>
+                <NumberBox x:Name="BatteryThreshold" Minimum="5" Maximum="100" SpinButtonPlacementMode="Inline" ValueChanged="OnNumberChanged" Width="120"/>
+            </StackPanel>
+            <ToggleSwitch x:Name="FullscreenToggle" Header="Pause when another app is fullscreen" Toggled="OnChanged"/>
+            <ToggleSwitch x:Name="MemoryToggle" Header="Pause on high process working set" Toggled="OnChanged"/>
+            <StackPanel Orientation="Horizontal" Spacing="12" Margin="0,8,0,8">
+                <TextBlock Text="Working-set limit (MB)" VerticalAlignment="Center"/>
+                <NumberBox x:Name="MemoryLimit" Minimum="256" Maximum="8192" SpinButtonPlacementMode="Inline" ValueChanged="OnNumberChanged" Width="140"/>
+            </StackPanel>
+
+            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,12,0,0">
+                <Button Content="Save" Click="OnSave"/>
+                <Button Content="User pause wallpaper" Click="OnUserPause"/>
+                <Button Content="User resume" Click="OnUserResume"/>
+            </StackPanel>
+
+            <TextBlock x:Name="StatusText" Margin="0,16,0,0" TextWrapping="Wrap" FontSize="12" Opacity="0.85"/>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>
