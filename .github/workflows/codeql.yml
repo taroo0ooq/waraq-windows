@@ -6,12 +6,12 @@ on:
   push:
     branches: [main]
     paths:
-      - "windows/**"
+      - "archive/wrq-win-001/windows/**"
       - ".github/workflows/codeql.yml"
   pull_request:
     branches: [main]
     paths:
-      - "windows/**"
+      - "archive/wrq-win-001/windows/**"
       - ".github/workflows/codeql.yml"
   schedule:
     # Weekly baseline even if path filters skip pushes
@@ -52,7 +52,7 @@ jobs:
           queries: security-and-quality
 
       - name: Build solution for analysis
-        working-directory: windows
+        working-directory: archive/wrq-win-001/windows
         run: |
           dotnet restore WaraqWindows.sln
           dotnet build WaraqWindows.sln -c Release --no-restore
