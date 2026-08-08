@@ -1,8 +1,8 @@
-; Waraq for Windows — Inno Setup 6 (WRQ-WIN-002 Phase 9)
-; Builds the current WinUI 3 app under src/ (not archive MVP).
+; Waraq for Windows — Inno Setup 6 (WRQ-WIN-002 / HF1-D2)
+; WinUI 3 app under src/. Start Menu launches the app only (no Uninstall pin).
 
 #ifndef MyAppVersion
-  #define MyAppVersion "0.9.0-phase9"
+  #define MyAppVersion "0.9.1-hf1"
 #endif
 #ifndef MyAppSourceDir
   #define MyAppSourceDir "..\artifacts\publish"
@@ -42,7 +42,9 @@ PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 UninstallDisplayIcon={app}\{#MyAppExeName}
-VersionInfoVersion=0.9.0.0
+UninstallDisplayName={#MyAppName}
+; Uninstall remains available via Windows Settings → Apps (no Start Menu Uninstall shortcut)
+VersionInfoVersion=0.9.1.0
 VersionInfoCompany={#MyAppPublisher}
 VersionInfoDescription={#MyAppName} Setup (WinUI)
 VersionInfoProductName={#MyAppName}
@@ -54,6 +56,17 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
 
+[InstallDelete]
+; HF1-D2: remove Start Menu Uninstall entries from prior installs / upgrades
+Type: files; Name: "{group}\Uninstall {#MyAppName}.lnk"
+Type: files; Name: "{group}\Uninstall *.lnk"
+; Stale MVP / misnamed pins that open uninstall or old host
+Type: files; Name: "{group}\Uninstall Waraq*.lnk"
+Type: files; Name: "{userprograms}\Waraq for Windows\Uninstall *.lnk"
+Type: files; Name: "{commonprograms}\Waraq for Windows\Uninstall *.lnk"
+Type: files; Name: "{userprograms}\Waraq Windows\Uninstall *.lnk"
+Type: files; Name: "{commonprograms}\Waraq Windows\Uninstall *.lnk"
+
 [Files]
 ; Self-contained publish (NET 8 + Windows App SDK self-contained)
 Source: "{#MyAppSourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
@@ -62,13 +75,13 @@ Source: "..\NOTICE"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\docs\install\WINDOWS.md"; DestDir: "{app}"; DestName: "README-INSTALL.md"; Flags: ignoreversion isreadme
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{group}\Uninstall {#MyAppName}"; Filename: "{uninstallexe}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+; Single Start Menu entry → app only (HF1-D2 P0: no Uninstall in Start)
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
-// Prereq strategy: self-contained publish bundles .NET 8 + WASDK (ADR 0002 / Phase 9).
-// No third-party mirrors. Official Microsoft URLs only if FD bootstrap is added later.
+// Uninstall: Windows Settings → Apps → Waraq for Windows (no Start Menu uninstall pin).
+// Prereqs: self-contained .NET 8 + WASDK (ADR 0002 / Phase 9 / HF1-D2).
