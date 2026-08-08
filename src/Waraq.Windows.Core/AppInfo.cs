@@ -6,14 +6,14 @@ namespace Waraq.Windows.Core;
 public static class AppInfo
 {
     public const string ProductName = "Waraq for Windows";
-    public const string Version = "0.8.0-phase8";
+    public const string Version = "0.9.1-hf1-d1";
     public const string License = "GPL-3.0-or-later";
-    public const string WorkId = "WRQ-WIN-002";
-    public const string Phase = "8 — L&F + a11y + DPI";
+    public const string WorkId = "WRQ-WIN-002-HF1";
+    public const string Phase = "HF1-D1 — host fail-closed";
 
     public static string PlaceholderTitle =>
-        $"{ProductName} — Phase 8 L&F";
+        $"{ProductName} — HF1 host";
 
     public static string StatusLine =>
-        $"{ProductName} {Version} · {WorkId} · Fluent L&F · PerMonitorV2 · a11y";
+        $"{ProductName} {Version} · {WorkId} · fail-closed WorkerW attach";
 }

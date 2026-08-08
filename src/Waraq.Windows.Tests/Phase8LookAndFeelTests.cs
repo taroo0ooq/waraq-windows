@@ -69,8 +69,8 @@ public class Phase8LookAndFeelTests
     [Fact]
     public void DesignTokenKeys_DocumentedInPhaseNotes()
     {
-        Assert.Contains("phase8", AppInfo.Version, StringComparison.OrdinalIgnoreCase);
-        Assert.Contains("L&F", AppInfo.Phase, StringComparison.OrdinalIgnoreCase);
+        Assert.False(string.IsNullOrWhiteSpace(AppInfo.Version));
+        Assert.False(string.IsNullOrWhiteSpace(AppInfo.Phase));
     }
 
     [Fact]
