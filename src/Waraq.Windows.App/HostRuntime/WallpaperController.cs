@@ -1,6 +1,6 @@
 // Waraq for Windows — GPL-3.0 derivative of bahamut42/waraq.
 // Copyright (C) Waraq authors and Waraq Windows contributors.
-// Phase 3–7: WorkerW surface — video/GIF/procedural + pause.
+// Phase 3–7 + HF1-D1: WorkerW surface fail-closed (no blank freeze).
 
 using System.Runtime.InteropServices.WindowsRuntime;
 using Microsoft.UI.Dispatching;
@@ -35,6 +35,7 @@ public sealed class WallpaperController : IDisposable
     public string? ActivePath => _activePath;
     public string? ActiveProceduralId => _activeProceduralId;
     public MediaKind ActiveKind => _activeKind;
+    public string? LastAttachError { get; private set; }
 
     public WallpaperHostProbeResult Probe() => _host.Probe();
 
@@ -101,24 +102,32 @@ public sealed class WallpaperController : IDisposable
 
         StopInternal();
 
-        _activePath = full;
-        _activeProceduralId = null;
-        _activeKind = kind == MediaKind.Image ? MediaKind.Image : kind;
-
         var window = await CreateAttachedSurfaceAsync().ConfigureAwait(true);
-        if (kind == MediaKind.Image)
+        try
         {
-            await window.InstallMediaAsync(full, MediaKind.Gif, fit).ConfigureAwait(true);
-        }
-        else
-        {
-            await window.InstallMediaAsync(full, kind, fit).ConfigureAwait(true);
-        }
+            if (kind == MediaKind.Image)
+            {
+                await window.InstallMediaAsync(full, MediaKind.Gif, fit).ConfigureAwait(true);
+            }
+            else
+            {
+                await window.InstallMediaAsync(full, kind, fit).ConfigureAwait(true);
+            }
 
-        _surface = window;
-        if (UserPaused)
+            _activePath = full;
+            _activeProceduralId = null;
+            _activeKind = kind == MediaKind.Image ? MediaKind.Image : kind;
+            _surface = window;
+            LastAttachError = null;
+            if (UserPaused)
+            {
+                ApplyPauseState(true, force: true);
+            }
+        }
+        catch
         {
-            ApplyPauseState(true, force: true);
+            DestroyOrphanSurface(window);
+            throw;
         }
     }
 
@@ -130,16 +139,24 @@ public sealed class WallpaperController : IDisposable
 
         StopInternal();
 
-        _activePath = null;
-        _activeProceduralId = engine.Id;
-        _activeKind = MediaKind.Procedural;
-
         var window = CreateAttachedSurfaceAsync().GetAwaiter().GetResult();
-        window.InstallProcedural(engine);
-        _surface = window;
-        if (UserPaused)
+        try
         {
-            ApplyPauseState(true, force: true);
+            window.InstallProcedural(engine);
+            _activePath = null;
+            _activeProceduralId = engine.Id;
+            _activeKind = MediaKind.Procedural;
+            _surface = window;
+            LastAttachError = null;
+            if (UserPaused)
+            {
+                ApplyPauseState(true, force: true);
+            }
+        }
+        catch
+        {
+            DestroyOrphanSurface(window);
+            throw;
         }
     }
 
@@ -160,34 +177,120 @@ public sealed class WallpaperController : IDisposable
         StopInternal();
     }
 
+    /// <summary>
+    /// HF1-D1: create 1×1 hidden surface, attach under WorkerW, only then expand.
+    /// Never leaves a top-level black fullscreen if attach fails.
+    /// </summary>
     private async Task<WallpaperSurfaceWindow> CreateAttachedSurfaceAsync()
     {
+        LastAttachError = null;
         var window = new WallpaperSurfaceWindow();
+
+        // Create HWND without claiming the virtual desktop.
+        window.AppWindow.IsShownInSwitchers = false;
+        window.AppWindow.Move(new global::Windows.Graphics.PointInt32(-32000, -32000));
+        window.AppWindow.Resize(new global::Windows.Graphics.SizeInt32(1, 1));
+        try
+        {
+            window.AppWindow.Hide();
+        }
+        catch
+        {
+            // Hide may throw on some builds — off-screen 1x1 still avoids full-screen freeze.
+        }
+
+        // Activate is required for HWND materialization on WinUI unpackaged.
         window.Activate();
+        await Task.Yield();
+
+        try
+        {
+            window.AppWindow.Hide();
+        }
+        catch
+        {
+            // ignore
+        }
+
+        window.AppWindow.Move(new global::Windows.Graphics.PointInt32(-32000, -32000));
+        window.AppWindow.Resize(new global::Windows.Graphics.SizeInt32(1, 1));
 
         var hwnd = WindowNative.GetWindowHandle(window);
         var (vx, vy, vw, vh) = DesktopWallpaperHost.GetVirtualScreenPixels();
-        window.AppWindow.Move(new global::Windows.Graphics.PointInt32(vx, vy));
-        window.AppWindow.Resize(new global::Windows.Graphics.SizeInt32(Math.Max(1, vw), Math.Max(1, vh)));
-        await Task.Yield();
-        _host.AttachHwnd(hwnd, vx, vy, vw, vh);
+
+        WallpaperAttachResult attach;
+        try
+        {
+            attach = _host.TryAttachHwnd(hwnd, vx, vy, Math.Max(1, vw), Math.Max(1, vh));
+        }
+        catch (Exception ex)
+        {
+            DestroyOrphanSurface(window);
+            LastAttachError = ex.Message;
+            throw new InvalidOperationException(
+                "Wallpaper host attach failed (fail-closed). " + ex.Message, ex);
+        }
+
+        if (!attach.Success)
+        {
+            DestroyOrphanSurface(window);
+            LastAttachError = attach.Message;
+            throw new InvalidOperationException(
+                "Wallpaper host attach failed (fail-closed). " + attach.Message);
+        }
+
         return window;
+    }
+
+    private static void DestroyOrphanSurface(WallpaperSurfaceWindow window)
+    {
+        try
+        {
+            window.Teardown();
+        }
+        catch
+        {
+            // ignore
+        }
+
+        try
+        {
+            var hwnd = WindowNative.GetWindowHandle(window);
+            if (hwnd != IntPtr.Zero)
+            {
+                // Best-effort hide + unparent so nothing stays on desktop.
+                _ = DesktopWallpaperHostNative.HideAndOrphan(hwnd);
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        try
+        {
+            window.AppWindow.Hide();
+        }
+        catch
+        {
+            // ignore
+        }
+
+        try
+        {
+            window.Close();
+        }
+        catch
+        {
+            // ignore
+        }
     }
 
     private void StopInternal()
     {
         if (_surface is not null)
         {
-            try
-            {
-                _surface.Teardown();
-                _surface.Close();
-            }
-            catch
-            {
-                // best-effort
-            }
-
+            DestroyOrphanSurface(_surface);
             _surface = null;
         }
 
@@ -195,6 +298,30 @@ public sealed class WallpaperController : IDisposable
         _activeProceduralId = null;
         _activeKind = MediaKind.Unknown;
         IsPlaybackPaused = false;
+    }
+}
+
+/// <summary>Tiny native helpers used only from fail-closed teardown.</summary>
+internal static class DesktopWallpaperHostNative
+{
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
+
+    [System.Runtime.InteropServices.DllImport("user32.dll")]
+    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+    public static bool HideAndOrphan(IntPtr hwnd)
+    {
+        try
+        {
+            ShowWindow(hwnd, 0); // SW_HIDE
+            SetParent(hwnd, IntPtr.Zero);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 }
 
@@ -222,13 +349,15 @@ internal sealed class WallpaperSurfaceWindow : Window
         presenter.IsMaximizable = false;
         presenter.SetBorderAndTitleBar(false, false);
         AppWindow.SetPresenter(presenter);
-        Content = new Grid { Background = new SolidColorBrush(Microsoft.UI.Colors.Black) };
+        // Transparent until media installs — reduces flash if briefly shown.
+        Content = new Grid { Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent) };
     }
 
     public async Task InstallMediaAsync(string path, MediaKind kind, WallpaperFitMode fit)
     {
         Teardown();
         var root = (Grid)Content!;
+        root.Background = new SolidColorBrush(Microsoft.UI.Colors.Black);
 
         if (kind is MediaKind.Gif or MediaKind.Image)
         {
@@ -268,6 +397,7 @@ internal sealed class WallpaperSurfaceWindow : Window
         Teardown();
         _proc = engine;
         var root = (Grid)Content!;
+        root.Background = new SolidColorBrush(Microsoft.UI.Colors.Black);
 
         var (vx, vy, vw, vh) = DesktopWallpaperHost.GetVirtualScreenPixels();
         _ = (vx, vy);
@@ -376,6 +506,7 @@ internal sealed class WallpaperSurfaceWindow : Window
             if (Content is Grid g)
             {
                 g.Children.Clear();
+                g.Background = new SolidColorBrush(Microsoft.UI.Colors.Transparent);
             }
         }
         catch
