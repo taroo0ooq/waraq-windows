@@ -4,7 +4,8 @@
 |-------|--------|
 | **Product** | Waraq for Windows (WinUI 3 parity) |
 | **work_id** | WRQ-WIN-002 |
-| **phase** | 9 — Installer + self-signed Authenticode |
+| **phase** | 9 / **HF1-D2** — Installer shortcuts + self-signed Authenticode |
+| **current version** | **0.9.1-hf1** |
 | **License** | GNU GPL v3 (`LICENSE`, `NOTICE`) |
 | **Platform** | Windows 10 / 11 (x64) |
 | **App path** | `src/Waraq.Windows.App` |
@@ -25,7 +26,10 @@ Get-FileHash .\Waraq.Windows-Setup-win-x64-*.exe -Algorithm SHA256
 
 4. Run Setup (per-user, **no admin** by default).  
    Default: `%LOCALAPPDATA%\Programs\WaraqWindows\`
-5. Start Menu → **Waraq for Windows** (`Waraq.Windows.App.exe`).
+5. Start Menu → **Waraq for Windows** (`Waraq.Windows.App.exe`).  
+   - **One Start Menu app shortcut only** (HF1-D2). There is **no** “Uninstall …” pin in Start.  
+   - To uninstall: **Windows Settings → Apps → Waraq for Windows → Uninstall**.  
+   - Upgrades delete stale Start Menu Uninstall shortcuts from older Setup builds.
 
 ### Prerequisites
 

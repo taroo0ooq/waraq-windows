@@ -1,4 +1,4 @@
-Waraq for Windows — Installer notes (WRQ-WIN-002 Phase 9)
+Waraq for Windows — Installer notes (WRQ-WIN-002 / HF1-D2)
 
 LICENSE
   GNU GPL v3 — see LICENSE and NOTICE in the install folder and
@@ -7,6 +7,11 @@ LICENSE
 PRODUCT
   This Setup installs the current WinUI 3 parity app (src/), not the
   archived WPF MVP under archive/wrq-win-001/.
+
+START MENU (HF1-D2)
+  Start shows a single "Waraq for Windows" shortcut that launches the app.
+  There is NO Uninstall entry in the Start Menu group (users were opening
+  uninstall by mistake). Uninstall via Windows Settings → Apps.
 
 CODE SIGNING (SELF-SIGNED)
   Setup and application may be Authenticode-signed with a *project
